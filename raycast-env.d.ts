@@ -10,10 +10,16 @@
 type ExtensionPreferences = {
   /** Home Assistant URL - Base URL of your Home Assistant instance */
   "haUrl": string,
-  /** Long-Lived Access Token - Create one in HA → tap your name → Security → Long-lived access tokens */
+  /** Home Assistant Token - Long-lived access token from HA → Security */
   "haToken": string,
-  /** Fire TV Entity ID - The media_player entity for your Fire TV */
-  "entityId": string
+  /** Fire TV Entity - media_player entity for your Fire TV */
+  "entityId": string,
+  /** Projector connected - Wake the projector via Wake-on-LAN before casting */
+  "hasProjector": boolean,
+  /** Projector Entity - media_player entity for your projector (used to check on/off state) */
+  "projectorEntityId"?: string,
+  /** Projector MAC Address - MAC address for Wake-on-LAN magic packet */
+  "projectorMac"?: string
 }
 
 /** Preferences accessible in all the extension's commands */

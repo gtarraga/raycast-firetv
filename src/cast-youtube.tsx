@@ -1,5 +1,5 @@
 import { showToast, Toast, Clipboard, LaunchProps } from "@raycast/api";
-import { wakeAndExec } from "./hass";
+import { wakeAndCast } from "./hass";
 
 interface Arguments {
   url?: string;
@@ -17,7 +17,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
   }
 
   if (!url) {
-    await showToast(Toast.Style.Failure, "No YouTube URL — copy one or pass as argument");
+    await showToast(Toast.Style.Failure, "No YouTube URL");
     return;
   }
   if (!isYoutubeUrl(url)) {
@@ -25,14 +25,15 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     return;
   }
 
-  const toast = await showToast(Toast.Style.Animated, "Waking Fire TV…");
+  const toast = await showToast(Toast.Style.Animated, "Casting to Fire TV…");
 
   try {
-    await wakeAndExec(
+    await wakeAndCast(
+      toast,
       `am start -a android.intent.action.VIEW -d "${url}" org.smarttube.stable`,
     );
     toast.style = Toast.Style.Success;
-    toast.title = "▶ Playing on Fire TV";
+    toast.title = "▶ Casting YouTube";
     toast.message = url.length > 70 ? url.slice(0, 67) + "…" : url;
   } catch (err) {
     toast.style = Toast.Style.Failure;

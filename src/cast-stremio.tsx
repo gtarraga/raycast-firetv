@@ -1,5 +1,5 @@
 import { showToast, Toast, Clipboard, LaunchProps } from "@raycast/api";
-import { wakeAndExec } from "./hass";
+import { wakeAndCast } from "./hass";
 
 interface Arguments {
   query?: string;
@@ -10,7 +10,6 @@ interface CinemetaResult {
   imdb_id: string;
   type: "movie" | "series";
   name: string;
-  releaseInfo?: string;
 }
 
 interface CinemetaResponse {
@@ -18,13 +17,12 @@ interface CinemetaResponse {
   rank?: number;
 }
 
-// Match tt followed by 7-8 digits
 const IMDB_ID_RE = /^(tt\d{7,8})$/i;
 
-async function searchCinemeta(query: string, type: "movie" | "series"): Promise<{ results: CinemetaResult[]; rank: number }> {
+async function searchCinemeta(query: string, type: "movie" | "series") {
   const url = `https://v3-cinemeta.strem.io/catalog/${type}/top/search=${encodeURIComponent(query)}.json`;
   const res = await fetch(url);
-  if (!res.ok) return { results: [], rank: 0 };
+  if (!res.ok) return { results: [] as CinemetaResult[], rank: 0 };
   const data = (await res.json()) as CinemetaResponse;
   return {
     results: (data.metas || []).filter((m) => m.imdb_id),
@@ -52,11 +50,9 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     let mediaType: "movie" | "series" = "movie";
     let title = input;
 
-    // IMDb ID directly?
     const directMatch = input.match(IMDB_ID_RE);
     if (directMatch) {
       imdbId = directMatch[1];
-      // Detect type from Cinemeta
       const metaRes = await fetch(`https://v3-cinemeta.strem.io/meta/movie/${imdbId}.json`);
       if (metaRes.ok) {
         const meta = (await metaRes.json()) as { meta?: { type?: string; name?: string } };
@@ -64,19 +60,15 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
         if (meta.meta?.name) title = meta.meta.name;
       }
     } else {
-      // Search both movie and series in parallel, pick best by Cinemeta rank
-      const [movieResults, seriesResults] = await Promise.all([
+      const [movies, series] = await Promise.all([
         searchCinemeta(input, "movie"),
         searchCinemeta(input, "series"),
       ]);
 
-      // Pick the type with the higher rank, then take its top result
-      let best: CinemetaResult | null = null;
-      if (movieResults.rank >= seriesResults.rank) {
-        best = movieResults.results[0] || seriesResults.results[0] || null;
-      } else {
-        best = seriesResults.results[0] || movieResults.results[0] || null;
-      }
+      const best =
+        movies.rank >= series.rank
+          ? (movies.results[0] || series.results[0] || null)
+          : (series.results[0] || movies.results[0] || null);
 
       if (!best) {
         toast.style = Toast.Style.Failure;
@@ -89,9 +81,11 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
       title = best.name;
     }
 
-    toast.message = `Opening ${title} (${imdbId})…`;
+    toast.title = `Casting ${title}…`;
+    toast.message = `Stremio — ${mediaType}`;
 
-    await wakeAndExec(
+    await wakeAndCast(
+      toast,
       `am start -a android.intent.action.VIEW -d "stremio:///detail/${mediaType}/${imdbId}" com.stremio.one`,
     );
 

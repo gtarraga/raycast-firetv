@@ -1,9 +1,13 @@
-import { getPreferenceValues } from "@raycast/api";
+import { getPreferenceValues, Toast } from "@raycast/api";
+import { createSocket } from "dgram";
 
 export interface Preferences {
   haUrl: string;
   haToken: string;
   entityId: string;
+  hasProjector: boolean;
+  projectorEntityId: string;
+  projectorMac: string;
 }
 
 let _prefs: Preferences | null = null;
@@ -12,17 +16,16 @@ export function prefs(): Preferences {
   return _prefs;
 }
 
-export async function callHAService(domain: string, service: string, data: Record<string, unknown>) {
+async function haFetch(path: string, init?: RequestInit) {
   const p = prefs();
   const base = p.haUrl.replace(/\/+$/, "");
-  const url = `${base}/api/services/${domain}/${service}`;
-  const res = await fetch(url, {
-    method: "POST",
+  const res = await fetch(`${base}${path}`, {
+    ...init,
     headers: {
       Authorization: `Bearer ${p.haToken}`,
       "Content-Type": "application/json",
+      ...(init?.headers || {}),
     },
-    body: JSON.stringify(data),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -31,17 +34,106 @@ export async function callHAService(domain: string, service: string, data: Recor
   return res;
 }
 
-export async function wakeAndExec(adbCmd: string) {
-  const p = prefs();
-  // 1. Wake Fire TV (WOL or ADB — triggers HDMI-CEC to wake projector too)
-  await callHAService("media_player", "turn_on", { entity_id: p.entityId });
-  // 2. Send WAKEUP keyevent — idempotent, also triggers CEC for projector
-  await callHAService("androidtv", "adb_command", {
-    entity_id: p.entityId,
-    command: "input keyevent 224",
+export async function callHAService(domain: string, service: string, data: Record<string, unknown>) {
+  return haFetch(`/api/services/${domain}/${service}`, {
+    method: "POST",
+    body: JSON.stringify(data),
   });
-  // 3. Give devices time to wake up
-  await new Promise((r) => setTimeout(r, 2000));
-  // 4. Send the content intent
-  await callHAService("androidtv", "adb_command", { entity_id: p.entityId, command: adbCmd });
+}
+
+async function getState(entityId: string): Promise<string> {
+  const res = await haFetch(`/api/states/${entityId}`);
+  const json = (await res.json()) as { state: string };
+  return json.state;
+}
+
+async function isOff(entityId: string): Promise<boolean> {
+  try {
+    const state = await getState(entityId);
+    return state === "off" || state === "standby" || state === "unavailable";
+  } catch {
+    return true;
+  }
+}
+
+function parseMac(mac: string): Buffer {
+  const hex = mac.replace(/[^0-9a-fA-F]/g, "");
+  if (hex.length !== 12) throw new Error(`Invalid MAC: ${mac}`);
+  return Buffer.from(hex, "hex");
+}
+
+function sendWol(mac: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const macBuf = parseMac(mac);
+    const packet = Buffer.alloc(6 + 16 * 6);
+    packet.fill(0xff, 0, 6);
+    for (let i = 0; i < 16; i++) macBuf.copy(packet, 6 + i * 6);
+
+    const socket = createSocket("udp4");
+    let done = false;
+    const finish = (err?: Error | null) => {
+      if (done) return;
+      done = true;
+      socket.close();
+      err ? reject(err) : resolve();
+    };
+
+    socket.on("error", (err) => finish(err));
+    socket.bind(0, () => {
+      socket.setBroadcast(true);
+      socket.send(packet, 9, "255.255.255.255", (err) => finish(err));
+    });
+  });
+}
+
+type ProgressFn = (msg: string) => void;
+
+async function wakeProjector(update: ProgressFn): Promise<boolean> {
+  const p = prefs();
+  if (!p.hasProjector) return false;
+
+  const off = await isOff(p.projectorEntityId);
+  if (!off) return false;
+
+  update("Turning on projector…");
+  await sendWol(p.projectorMac);
+  await new Promise((r) => setTimeout(r, 5000));
+  return true;
+}
+
+async function wakeFireTV(projectorWasOff: boolean, update: ProgressFn) {
+  const p = prefs();
+  const tvOff = await isOff(p.entityId);
+
+  if (tvOff) {
+    update(projectorWasOff ? "Waking Fire TV + projector…" : "Waking Fire TV…");
+    await callHAService("androidtv", "adb_command", {
+      entity_id: p.entityId,
+      command: "input keyevent 26",
+    });
+    await new Promise((r) => setTimeout(r, 3000));
+  } else if (projectorWasOff) {
+    update("Reconnecting Fire TV to projector…");
+    await callHAService("androidtv", "adb_command", {
+      entity_id: p.entityId,
+      command: "input keyevent 3",
+    });
+    await new Promise((r) => setTimeout(r, 1000));
+  } else {
+    await callHAService("media_player", "turn_on", { entity_id: p.entityId });
+    await new Promise((r) => setTimeout(r, 500));
+  }
+}
+
+export async function wakeAndCast(toast: Toast, intentCmd: string) {
+  const update = (msg: string) => {
+    toast.message = msg;
+  };
+
+  const projWasOff = await wakeProjector(update);
+  await wakeFireTV(projWasOff, update);
+  await callHAService("androidtv", "adb_command", {
+    entity_id: prefs().entityId,
+    command: intentCmd,
+  });
 }
