@@ -33,7 +33,15 @@ export async function callHAService(domain: string, service: string, data: Recor
 
 export async function wakeAndExec(adbCmd: string) {
   const p = prefs();
+  // 1. Wake Fire TV (WOL or ADB — triggers HDMI-CEC to wake projector too)
   await callHAService("media_player", "turn_on", { entity_id: p.entityId });
-  await new Promise((r) => setTimeout(r, 1500));
+  // 2. Send WAKEUP keyevent — idempotent, also triggers CEC for projector
+  await callHAService("androidtv", "adb_command", {
+    entity_id: p.entityId,
+    command: "input keyevent 224",
+  });
+  // 3. Give devices time to wake up
+  await new Promise((r) => setTimeout(r, 2000));
+  // 4. Send the content intent
   await callHAService("androidtv", "adb_command", { entity_id: p.entityId, command: adbCmd });
 }
