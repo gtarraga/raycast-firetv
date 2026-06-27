@@ -3,21 +3,26 @@
   "name": "firetv",
   "title": "Fire TV Cast",
   "description": "Cast YouTube and Stremio to Fire TV via Home Assistant",
-  "icon": "command-icon.png",
+  "icon": {
+    "light": "command-icon.png",
+    "dark": "command-icon-dark.png"
+  },
   "author": "gtarraga",
-  "categories": ["Media"],
+  "categories": [
+    "Media"
+  ],
   "license": "MIT",
   "commands": [
     {
       "name": "cast-youtube",
       "title": "Cast YouTube",
-      "subtitle": "SmartTube",
+      "subtitle": "Fire TV",
       "description": "Turn on Fire TV and projector, play YouTube in SmartTube",
       "mode": "no-view",
       "arguments": [
         {
           "name": "url",
-          "placeholder": "YouTube link",
+          "placeholder": "YouTube Link",
           "type": "text",
           "required": false
         }
@@ -26,13 +31,13 @@
     {
       "name": "cast-stremio",
       "title": "Cast Stremio",
-      "subtitle": "Stremio",
+      "subtitle": "Fire TV",
       "description": "Turn on Fire TV and projector, open movie or show in Stremio",
       "mode": "no-view",
       "arguments": [
         {
           "name": "query",
-          "placeholder": "movie/series name",
+          "placeholder": "Movie/Series Name",
           "type": "text",
           "required": false
         }

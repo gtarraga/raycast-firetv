@@ -35,12 +35,12 @@ declare namespace Preferences {
 declare namespace Arguments {
   /** Arguments passed to the `cast-youtube` command */
   export type CastYoutube = {
-  /** YouTube link */
+  /** YouTube Link */
   "url": string
 }
   /** Arguments passed to the `cast-stremio` command */
   export type CastStremio = {
-  /** movie/series name */
+  /** Movie/Series Name */
   "query": string
 }
 }
