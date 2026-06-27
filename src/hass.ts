@@ -95,7 +95,7 @@ async function wakeProjector(update: ProgressFn): Promise<boolean> {
   const off = await isOff(p.projectorEntityId);
   if (!off) return false;
 
-  update("Turning on projector…");
+  update("Turning On Projector…");
   await sendWol(p.projectorMac);
   await new Promise((r) => setTimeout(r, 5000));
   return true;
@@ -106,14 +106,14 @@ async function wakeFireTV(projectorWasOff: boolean, update: ProgressFn) {
   const tvOff = await isOff(p.entityId);
 
   if (tvOff) {
-    update(projectorWasOff ? "Waking Fire TV + projector…" : "Waking Fire TV…");
+    update(projectorWasOff ? "Waking Fire TV + Projector…" : "Waking Fire TV…");
     await callHAService("androidtv", "adb_command", {
       entity_id: p.entityId,
       command: "input keyevent 26",
     });
     await new Promise((r) => setTimeout(r, 3000));
   } else if (projectorWasOff) {
-    update("Reconnecting Fire TV to projector…");
+    update("Reconnecting Fire TV to Projector…");
     await callHAService("androidtv", "adb_command", {
       entity_id: p.entityId,
       command: "input keyevent 3",
