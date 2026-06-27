@@ -1,0 +1,79 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "firetv",
+  "title": "Fire TV Control",
+  "description": "Control your Fire TV — cast YouTube in SmartTube, open movies in Stremio",
+  "icon": "command-icon.png",
+  "author": "gtarraga",
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "cast-youtube",
+      "title": "Cast YouTube",
+      "subtitle": "Clipboard → Fire TV SmartTube",
+      "description": "Turn on Fire TV and play a YouTube video in SmartTube",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "url",
+          "placeholder": "youtube link",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "cast-stremio",
+      "title": "Cast Stremio",
+      "subtitle": "Clipboard → Fire TV Stremio",
+      "description": "Turn on Fire TV and open a movie or show in Stremio",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "query",
+          "placeholder": "movie/series name",
+          "type": "text",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "preferences": [
+    {
+      "name": "haUrl",
+      "title": "Home Assistant URL",
+      "description": "Base URL of your Home Assistant instance",
+      "type": "textfield",
+      "required": true,
+      "placeholder": "https://homeassistant.stoneforge.dev"
+    },
+    {
+      "name": "haToken",
+      "title": "Long-Lived Access Token",
+      "description": "Create one in HA → tap your name → Security → Long-lived access tokens",
+      "type": "password",
+      "required": true
+    },
+    {
+      "name": "entityId",
+      "title": "Fire TV Entity ID",
+      "description": "The media_player entity for your Fire TV",
+      "type": "textfield",
+      "required": true,
+      "default": "media_player.guillem_fire_tv",
+      "placeholder": "media_player.guillem_fire_tv"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.80.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.8",
+    "@types/node": "^20.14.9",
+    "typescript": "^5.5.2"
+  },
+  "scripts": {
+    "dev": "ray develop",
+    "build": "ray build -e dist"
+  }
+}
