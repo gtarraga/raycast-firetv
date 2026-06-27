@@ -13,8 +13,8 @@ Copy an IMDb ID (`tt1375666`) or type a movie/series name → Raycast → "Cast 
 ## Setup
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 Then configure in Raycast Preferences:
