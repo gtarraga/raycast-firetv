@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "firetv",
   "title": "Fire TV Cast",
-  "description": "Cast YouTube and Stremio to your Fire TV via Home Assistant",
+  "description": "Cast YouTube and Stremio to Fire TV via Home Assistant",
   "icon": "command-icon.png",
   "author": "gtarraga",
   "categories": ["Media"],
@@ -11,13 +11,13 @@
     {
       "name": "cast-youtube",
       "title": "Cast YouTube",
-      "subtitle": "Clipboard → Fire TV SmartTube",
-      "description": "Turn on your Fire TV and projector, then play a YouTube video in SmartTube",
+      "subtitle": "SmartTube",
+      "description": "Turn on Fire TV and projector, play YouTube in SmartTube",
       "mode": "no-view",
       "arguments": [
         {
           "name": "url",
-          "placeholder": "youtube link",
+          "placeholder": "YouTube link",
           "type": "text",
           "required": false
         }
@@ -26,8 +26,8 @@
     {
       "name": "cast-stremio",
       "title": "Cast Stremio",
-      "subtitle": "Clipboard → Fire TV Stremio",
-      "description": "Turn on your Fire TV and projector, then open a movie or show in Stremio",
+      "subtitle": "Stremio",
+      "description": "Turn on Fire TV and projector, open movie or show in Stremio",
       "mode": "no-view",
       "arguments": [
         {
@@ -60,7 +60,7 @@
       "type": "textfield",
       "required": true,
       "title": "Fire TV Entity",
-      "description": "media_player entity for your Fire TV",
+      "description": "media_player entity for Fire TV",
       "placeholder": "media_player.fire_tv"
     },
     {
@@ -68,16 +68,16 @@
       "type": "checkbox",
       "required": false,
       "default": false,
-      "title": "Projector connected",
-      "description": "Wake the projector via Wake-on-LAN before casting",
-      "label": "Projector connected"
+      "title": "Projector Connected",
+      "description": "Wake projector via Wake-on-LAN before casting",
+      "label": "Projector Connected"
     },
     {
       "name": "projectorEntityId",
       "type": "textfield",
       "required": false,
       "title": "Projector Entity",
-      "description": "media_player entity for your projector (used to check on/off state)",
+      "description": "media_player entity for projector",
       "placeholder": "media_player.projector"
     },
     {

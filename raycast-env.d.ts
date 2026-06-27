@@ -12,11 +12,11 @@ type ExtensionPreferences = {
   "haUrl": string,
   /** Home Assistant Token - Long-lived access token from HA → Security */
   "haToken": string,
-  /** Fire TV Entity - media_player entity for your Fire TV */
+  /** Fire TV Entity - media_player entity for Fire TV */
   "entityId": string,
-  /** Projector connected - Wake the projector via Wake-on-LAN before casting */
+  /** Projector Connected - Wake projector via Wake-on-LAN before casting */
   "hasProjector": boolean,
-  /** Projector Entity - media_player entity for your projector (used to check on/off state) */
+  /** Projector Entity - media_player entity for projector */
   "projectorEntityId"?: string,
   /** Projector MAC Address - MAC address for Wake-on-LAN magic packet */
   "projectorMac"?: string
@@ -35,7 +35,7 @@ declare namespace Preferences {
 declare namespace Arguments {
   /** Arguments passed to the `cast-youtube` command */
   export type CastYoutube = {
-  /** youtube link */
+  /** YouTube link */
   "url": string
 }
   /** Arguments passed to the `cast-stremio` command */
