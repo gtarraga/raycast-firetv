@@ -75,7 +75,8 @@ function sendWol(mac: string): Promise<void> {
       if (done) return;
       done = true;
       socket.close();
-      err ? reject(err) : resolve();
+      if (err) reject(err);
+      else resolve();
     };
 
     socket.on("error", (err) => finish(err));

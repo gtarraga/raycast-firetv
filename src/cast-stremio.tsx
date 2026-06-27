@@ -84,10 +84,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
         year = meta.releaseInfo || "";
       }
     } else {
-      const [movies, series] = await Promise.all([
-        searchCinemeta(input, "movie"),
-        searchCinemeta(input, "series"),
-      ]);
+      const [movies, series] = await Promise.all([searchCinemeta(input, "movie"), searchCinemeta(input, "series")]);
 
       const best =
         movies.rank >= series.rank

@@ -28,10 +28,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
   const toast = await showToast(Toast.Style.Animated, "Casting to Fire TV…");
 
   try {
-    await wakeAndCast(
-      toast,
-      `am start -a android.intent.action.VIEW -d "${url}" org.smarttube.stable`,
-    );
+    await wakeAndCast(toast, `am start -a android.intent.action.VIEW -d "${url}" org.smarttube.stable`);
     toast.style = Toast.Style.Success;
     toast.title = "▶ Casting YouTube";
     toast.message = url.length > 70 ? url.slice(0, 67) + "…" : url;
