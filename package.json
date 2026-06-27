@@ -1,10 +1,11 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "firetv",
-  "title": "Fire TV Control",
+  "title": "Fire TV Cast",
   "description": "Cast YouTube and Stremio to your Fire TV via Home Assistant",
   "icon": "command-icon.png",
   "author": "gtarraga",
+  "categories": ["Media"],
   "license": "MIT",
   "commands": [
     {
@@ -98,6 +99,7 @@
   },
   "scripts": {
     "dev": "ray develop",
-    "build": "ray build -e dist"
+    "build": "ray build -e dist",
+    "lint": "ray lint"
   }
 }
