@@ -29,110 +29,74 @@ function platformMatches(plat: string, jwPackage: string): boolean {
   return (JW_PLATFORMS[plat] || []).includes(jwPackage);
 }
 
-// ── HBO scraper ──────────────────────────────────────────────
+// ── HBO Max URL resolution ──────────────────────────────────
 
-/** Scrape hbo.com for a show-page UUID. Returns null if not found. */
-async function resolveHboUrl(titles: string[]): Promise<string | null> {
-  const headers = {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    Accept: "text/html,application/xhtml+xml",
-    "Accept-Language": "en-US,en;q=0.9",
-  };
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+const UUID_RE = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i;
 
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/g, "");
+}
+
+/** Extract HBO Max UUID from a URL (redirect target or search result). */
+function extractUuid(url: string): string | null {
+  const m = url.match(UUID_RE);
+  return m ? m[0] : null;
+}
+
+/**
+ * Resolve HBO Max show/movie URL to a landing-page UUID (avoids autoplay).
+ *
+ * Two-level fallback:
+ * 1. Direct hbo.com vanity URL → follow redirect → extract UUID from final URL.
+ *    Shows: hbo.com/<slug>   Movies: hbo.com/movies/<slug>
+ * 2. Startpage web search for "<title> HBO Max" → regex UUID from results.
+ *
+ * Returns null when both levels fail (caller opens app home).
+ */
+async function resolveHboUrl(
+  titles: string[],
+  objectType: "SHOW" | "MOVIE",
+): Promise<string | null> {
   for (const title of titles) {
-    const slug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/-+$/g, "");
+    const slug = slugify(title);
     if (!slug) continue;
 
-    // Try both /content/<slug> (shows) and /content/movies/<slug> (movies)
-    for (const contentPath of [`/content/${slug}`, `/content/movies/${slug}`]) {
-      const url = `https://www.hbo.com${contentPath}`;
-      console.log("[resolve] hbo.com scrape:", url, `(from title "${title}")`);
-      const res = await fetch(url, { headers });
-      if (!res.ok) {
-        console.log("[resolve] hbo.com HTTP", res.status, `for ${contentPath}`);
-        continue;
-      }
-      const html = await res.text();
+    // ── Level 1: direct hbo.com vanity URL ──────────────────
+    const path = objectType === "MOVIE" ? `/movies/${slug}` : `/${slug}`;
+    const url = `https://www.hbo.com${path}`;
+    console.log("[resolve] hbo.com direct:", url, `(from "${title}")`);
 
-      // Find seriesId that appears near seasonNumber — this is the page's own show.
-      // HTML has escaped JSON: `\"seriesId\"` etc.
-      // Strategy: find UUIDs near seriesId, check if seasonNumber nearby.
-      const sidGlobal = /seriesId[^a-f0-9]*([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/g;
-      let sidExec: RegExpExecArray | null;
-      while ((sidExec = sidGlobal.exec(html)) !== null) {
-        const sid = sidExec[1];
-        const after = html.slice(sidExec.index, sidExec.index + 2000);
-        if (/seasonNumber\D*\d+/.test(after)) {
-          const hboUrl = `https://play.hbomax.com/show/${sid}`;
-          console.log("[resolve] hbo.com found UUID (seriesId+episode):", hboUrl);
-          return hboUrl;
-        }
-      }
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml", "Accept-Language": "en-US,en;q=0.9" },
+      redirect: "follow",
+    });
 
-      // New format: max.com/shows/<slug>/<uuid> or max.com/movies/<slug>/<uuid>
-      const newMatch = html.match(
-        /max\.com\/(?:shows|movies)\/[a-z0-9-]+\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
-      );
-      if (newMatch) {
-        const hboUrl = `https://play.hbomax.com/show/${newMatch[1]}`;
-        console.log("[resolve] hbo.com found UUID (max.com):", hboUrl);
-        return hboUrl;
-      }
+    const uuid = extractUuid(res.url);
+    if (uuid && res.url !== url) {
+      const hboUrl = `https://play.hbomax.com/show/${uuid}`;
+      console.log("[resolve] hbo.com redirect → UUID:", uuid);
+      return hboUrl;
+    }
+    console.log("[resolve] hbo.com HTTP", res.status, `for ${path}`);
 
-      // Old format: play.hbomax.com/show/<uuid> or play.hbomax.com/shows/<uuid>
-      const oldMatch = html.match(
-        /play\.hbomax\.com\/shows?\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
-      );
-      if (oldMatch) {
-        const hboUrl = `https://play.hbomax.com/show/${oldMatch[1]}`;
-        console.log("[resolve] hbo.com found UUID (play.hbomax):", hboUrl);
-        return hboUrl;
-      }
-    } // end content path loop
-
-    // Fallback: use Startpage to search for the show on hbomax.com.
-    // Startpage returns Google-quality results with no API key.
-    // We considered other search options:
-    //   Exa (exa.ai)        — great results, free tier 20K/mo, but needs API key
-    //   DuckDuckGo Lite     — blocked, returns empty pages
-    //   Mojeek              — unreliable, spotty coverage for show titles
-    //   Bing                — API shutting down (announced May 2025)
-    //   Google CSE          — 100 queries/day free, needs key + setup
+    // ── Level 2: Startpage web search ───────────────────────
     const spUrl = await searchStartpage(title);
     if (spUrl) {
-      console.log("[resolve] hbo.com found URL (Startpage):", spUrl);
+      console.log("[resolve] Startpage →", spUrl);
       return spUrl;
     }
-
-    console.log("[resolve] hbo.com no UUID in HTML for", slug);
   }
   return null;
 }
 
-// ── Search fallback ───────────────────────────────────────────
-
-/**
- * Search Startpage for the show's hbomax.com URL.
- * Zero API key, Google-quality results via Startpage's privacy proxy.
- */
+/** Search Startpage for a title's hbomax.com UUID. */
 async function searchStartpage(title: string): Promise<string | null> {
   const q = encodeURIComponent(`${title} HBO Max`);
-  const url = `https://www.startpage.com/sp/search?q=${q}`;
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    },
-  });
+  const res = await fetch(`https://www.startpage.com/sp/search?q=${q}`, { headers: { "User-Agent": UA } });
   if (!res.ok) return null;
   const html = await res.text();
-  const m = html.match(
-    /hbomax\.com\/(?:shows|movies)\/[a-z0-9-]+\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i,
-  );
+  const m = html.match(/hbomax\.com\/(?:shows|movies)\/[a-z0-9-]+\/([a-f0-9-]{36})/i);
   if (m) return `https://play.hbomax.com/show/${m[1]}`;
   return null;
 }
@@ -199,7 +163,7 @@ function makeMatch(
  * Resolve a query to a specific platform's deep-link intent.
  * Platforms are tried in priority order.  Returns the first match.
  *
- * - HBO: scrapes hbo.com for show landing page (avoids autoplay).
+ * - HBO: resolves show-page URL via hbo.com redirect → Startpage fallback (avoids autoplay).
  *   Falls back to opening the HBO Max app home.
  * - Prime: always opens app home (JustWatch URLs may autoplay).
  * - Stremio: resolved via IMDb ID from JustWatch metadata.
@@ -244,16 +208,20 @@ export async function resolveMedia(
 
     const match = (best.offers || []).find((o) => platformMatches(plat, o.platform));
 
-    // HBO Max: scrape hbo.com for show-page URL (JustWatch gives video/watch links)
+    // HBO Max: resolve show-page URL via direct redirect → Startpage fallback.
+    // Deliberately avoids JustWatch video/watch links (they autoplay).
     if (plat === "hbo") {
       if (!match?.url) continue; // not on HBO Max, try next platform
-      const hboUrl = await resolveHboUrl([best.originalTitle, best.title, query].filter(Boolean) as string[]);
+      const hboUrl = await resolveHboUrl(
+        [best.originalTitle, best.title, query].filter(Boolean) as string[],
+        best.objectType,
+      );
       if (hboUrl) {
-        console.log("[resolve] platform HBO — scraped URL:", hboUrl);
+        console.log("[resolve] platform HBO — resolved:", hboUrl);
         return makeMatch("hbo", hboUrl, buildHboIntent(hboUrl), best);
       }
-      // scraper failed — open app home (don't fall back to video URL)
-      console.log("[resolve] platform HBO — scraper failed, fallback to app home");
+      // both levels failed — open app home
+      console.log("[resolve] platform HBO — not found, app home");
       return makeMatch("hbo", "", "am start -n com.hbo.hbonow/com.wbd.beam.BeamActivity -f 0x10000020", best, true);
     }
 
