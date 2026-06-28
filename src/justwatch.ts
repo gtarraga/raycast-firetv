@@ -11,6 +11,7 @@ export interface JWTitleResult {
   imdbId?: string;
   tmdbId?: string;
   title: string;
+  originalTitle?: string;
   year?: number;
   fullPath: string;
   runtime?: number;
@@ -69,6 +70,7 @@ export async function searchJustWatchFull(query: string, country: string, lang: 
             objectType
             content(country: $country, language: $lang) {
               title
+              originalTitle
               fullPath
               originalReleaseYear
               runtime
@@ -93,6 +95,7 @@ export async function searchJustWatchFull(query: string, country: string, lang: 
       objectType: "SHOW" | "MOVIE";
       content: {
         title: string;
+        originalTitle?: string;
         fullPath: string;
         originalReleaseYear?: number;
         runtime?: number;
@@ -117,6 +120,7 @@ export async function searchJustWatchFull(query: string, country: string, lang: 
       imdbId: c.externalIds?.imdbId,
       tmdbId: c.externalIds?.tmdbId,
       title: c.title,
+      originalTitle: c.originalTitle,
       year: c.originalReleaseYear,
       fullPath: c.fullPath,
       runtime: c.runtime,
@@ -141,6 +145,7 @@ export async function getTitleById(nodeId: string, country: string, lang: string
           objectType
           content(country: $country, language: $lang) {
             title
+            originalTitle
             fullPath
             originalReleaseYear
             runtime
@@ -164,6 +169,7 @@ export async function getTitleById(nodeId: string, country: string, lang: string
     imdbId: extIds?.imdbId,
     tmdbId: extIds?.tmdbId,
     title: c.title as string,
+    originalTitle: c.originalTitle as string | undefined,
     year: c.originalReleaseYear as number | undefined,
     fullPath: c.fullPath as string,
     runtime: c.runtime as number | undefined,
@@ -177,7 +183,7 @@ export async function resolveShow(
   platform: string,
   country: string,
   lang: string,
-): Promise<{ url: string; title: string; year?: number; platformName: string } | null> {
+): Promise<{ url: string; title: string; originalTitle?: string; year?: number; platformName: string } | null> {
   const targetPackages = getJWPlatforms(platform);
 
   const results = await searchJustWatchFull(query, country, lang);
@@ -187,7 +193,13 @@ export async function resolveShow(
   const match = (best.offers || []).find((o) => targetPackages.includes(o.platform));
   if (!match) return null;
 
-  return { url: match.url, title: best.title, year: best.year, platformName: match.platform };
+  return {
+    url: match.url,
+    title: best.title,
+    originalTitle: best.originalTitle,
+    year: best.year,
+    platformName: match.platform,
+  };
 }
 
 /** Get ALL available platforms for a show, plus search metadata for Stremio. */

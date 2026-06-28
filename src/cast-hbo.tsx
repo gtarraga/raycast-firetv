@@ -58,8 +58,11 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
       return;
     }
 
+    const displayTitle = result.originalTitle || result.title;
+    const footer = result.year ? `${displayTitle} · ${result.year}` : displayTitle;
+
     toast.title = `Casting ${result.title}…`;
-    toast.message = result.platformName;
+    toast.message = footer;
 
     // JustWatch returns play.hbomax.com/video/watch/<id> — rewrite to
     // play.max.com because the HBO Max Android app (com.hbo.hbonow) handles
@@ -74,7 +77,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
 
     toast.style = Toast.Style.Success;
     toast.title = `🎬 ${result.title}`;
-    toast.message = result.platformName;
+    toast.message = footer;
   } catch (err) {
     toast.title = "Opening HBO Max…";
     toast.message = err instanceof Error ? err.message : "Search failed, launching app";

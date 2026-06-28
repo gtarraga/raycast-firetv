@@ -41,8 +41,11 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
       return;
     }
 
+    const displayTitle = result.originalTitle || result.title;
+    const footer = result.year ? `${displayTitle} · ${result.year}` : displayTitle;
+
     toast.title = `Casting ${result.title}…`;
-    toast.message = result.platformName;
+    toast.message = footer;
 
     await wakeAndCast(toast, `am start -a android.intent.action.VIEW -d "${result.url}" -f 0x10000020 com.amazon.avod`);
 
@@ -50,7 +53,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
 
     toast.style = Toast.Style.Success;
     toast.title = `🎬 ${result.title}`;
-    toast.message = result.platformName;
+    toast.message = footer;
   } catch (err) {
     toast.title = "Opening Prime Video…";
     toast.message = err instanceof Error ? err.message : "Search failed, launching app";

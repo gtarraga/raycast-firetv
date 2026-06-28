@@ -142,7 +142,9 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
           const type = meta.objectType === "SHOW" ? "series" : "movie";
           const intent = `am start -a android.intent.action.VIEW -d "stremio:///detail/${type}/${meta.imdbId}" com.stremio.one`;
           const stremioName = meta.title || input;
-          const stremioYear = meta.year ? `${stremioName} · ${meta.year}` : stremioName;
+          const stremioDisplay =
+            meta.originalTitle && meta.originalTitle !== stremioName ? meta.originalTitle : stremioName;
+          const stremioYear = meta.year ? `${stremioDisplay} · ${meta.year}` : stremioDisplay;
           toast.title = `Casting via Stremio…`;
           toast.message = stremioYear;
           await wakeAndCast(toast, intent);
@@ -159,7 +161,8 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
       if (!match?.url) continue;
 
       const showName = match.title || input;
-      const titleYear = match.year ? `${showName} · ${match.year}` : showName;
+      const displayTitle = meta?.originalTitle && meta.originalTitle !== showName ? meta.originalTitle : showName;
+      const titleYear = match.year ? `${displayTitle} · ${match.year}` : displayTitle;
 
       // HBO Max: scrape hbo.com for show-page URL (JustWatch gives
       // video/watch links that autoplay — we want the landing page).

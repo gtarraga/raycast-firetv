@@ -12,7 +12,8 @@ function buildStremioIntent(result: JWTitleResult): string {
 }
 
 function formatLabel(result: JWTitleResult): string {
-  return result.year ? `${result.title} · ${result.year}` : result.title;
+  const displayTitle = result.originalTitle || result.title;
+  return result.year ? `${displayTitle} · ${result.year}` : displayTitle;
 }
 
 export default async function Command(props: LaunchProps<{ arguments: Arguments }>) {
