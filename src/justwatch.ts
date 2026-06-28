@@ -16,11 +16,11 @@ export interface JWTitleResult {
   runtime?: number;
   genres?: string[];
   posterUrl?: string;
-}
-
-interface JustWatchOffer {
-  standardWebURL: string;
-  package: { clearName: string };
+  offers?: Array<{
+    url: string;
+    platform: string;
+    monetizationType: string;
+  }>;
 }
 
 /** Map our internal platform keys to JustWatch package names */
@@ -52,7 +52,7 @@ async function jwQuery(query: string, variables: Record<string, unknown>) {
   return res.json();
 }
 
-/** Search JustWatch — returns ranked results with IMDb IDs, posters, etc. */
+/** Search JustWatch — returns ranked results with IMDb IDs, offers, posters, etc. */
 export async function searchJustWatchFull(
   query: string,
   country: string,
@@ -70,10 +70,14 @@ export async function searchJustWatchFull(
               fullPath
               originalReleaseYear
               runtime
-              shortDescription
               externalIds { imdbId tmdbId }
               genres { shortName }
               posterUrl(profile: S718, format: JPG)
+            }
+            offers(country: $country, platform: WEB) {
+              standardWebURL
+              monetizationType
+              package { clearName }
             }
           }
         }
@@ -81,14 +85,32 @@ export async function searchJustWatchFull(
     }`,
     { q: query, country, lang },
   );
-  const edges: Array<{ node: JWTitleResult & { content: Record<string, unknown> } }> =
-    data?.data?.popularTitles?.edges || [];
+  type RawEdge = {
+    node: {
+      id: string;
+      objectType: "SHOW" | "MOVIE";
+      content: {
+        title: string;
+        fullPath: string;
+        originalReleaseYear?: number;
+        runtime?: number;
+        externalIds?: { imdbId?: string; tmdbId?: string };
+        genres?: Array<{ shortName: string }>;
+        posterUrl?: string;
+      };
+      offers?: Array<{
+        standardWebURL: string;
+        monetizationType: string;
+        package: { clearName: string };
+      }>;
+    };
+  };
+  const edges: RawEdge[] = data?.data?.popularTitles?.edges || [];
 
   // Score and rank
   const q = query.toLowerCase();
-  const scored = edges.map((e) => {
-    const title = (e.node.content as Record<string, unknown>).title as string;
-    const t = title?.toLowerCase() || "";
+  const scored = edges.map((e, i) => {
+    const t = e.node.content.title?.toLowerCase() || "";
     let score = 0;
     if (t === q) score = 100;
     else if (t.startsWith(q)) score = 50;
@@ -97,10 +119,8 @@ export async function searchJustWatchFull(
   });
   scored.sort((a, b) => b.score - a.score);
 
-  type RawContent = { title: string; fullPath: string; originalReleaseYear?: number; runtime?: number; externalIds?: { imdbId?: string; tmdbId?: string }; genres?: Array<{ shortName: string }>; posterUrl?: string };
-
   return scored.map((e) => {
-    const c = e.content as unknown as RawContent;
+    const c = e.content;
     return {
       id: e.id,
       objectType: e.objectType,
@@ -112,6 +132,11 @@ export async function searchJustWatchFull(
       runtime: c.runtime,
       genres: c.genres?.map((g) => g.shortName),
       posterUrl: c.posterUrl,
+      offers: (e.offers || []).map((o) => ({
+        url: o.standardWebURL?.replace(/[?&]utm_source=.*$/, "") || "",
+        platform: o.package?.clearName || "",
+        monetizationType: o.monetizationType,
+      })),
     };
   });
 }
@@ -160,38 +185,6 @@ export async function getTitleById(
     posterUrl: c.posterUrl as string | undefined,
   };
 }
-
-/** Search JustWatch for a show/movie. Returns best title match with year. */
-export async function searchJustWatch(
-  query: string,
-  country: string,
-  lang: string,
-): Promise<{ fullPath: string; title: string; year?: number } | null> {
-  const results = await searchJustWatchFull(query, country, lang);
-  if (!results.length) return null;
-  const best = results[0];
-  return { fullPath: best.fullPath, title: best.title, year: best.year };
-}
-
-/** Get all streaming offers for a JustWatch path. */
-export async function getOffers(
-  fullPath: string,
-  country: string,
-): Promise<JustWatchOffer[]> {
-  const data = await jwQuery(
-    `query Offers($path: String!, $country: Country!) {
-      urlV2(fullPath: $path) {
-        id node {
-          ... on Show { offers(country: $country, platform: WEB) { standardWebURL package { clearName } } }
-          ... on Movie { offers(country: $country, platform: WEB) { standardWebURL package { clearName } } }
-        }
-      }
-    }`,
-    { path: fullPath, country },
-  );
-  return data?.data?.urlV2?.node?.offers || [];
-}
-
 /** Resolve a show to a streaming URL on a specific platform. */
 export async function resolveShow(
   query: string,
@@ -201,18 +194,14 @@ export async function resolveShow(
 ): Promise<{ url: string; title: string; year?: number; platformName: string } | null> {
   const targetPackages = getJWPlatforms(platform);
 
-  const result = await searchJustWatch(query, country, lang);
-  if (!result) return null;
+  const results = await searchJustWatchFull(query, country, lang);
+  const best = results[0];
+  if (!best) return null;
 
-  const offers = await getOffers(result.fullPath, country);
-
-  const match = offers.find((o) => targetPackages.includes(o.package?.clearName || ""));
+  const match = (best.offers || []).find((o) => targetPackages.includes(o.platform));
   if (!match) return null;
 
-  // Clean affiliate tracking params from URL
-  const url = match.standardWebURL?.replace(/[?&]utm_source=.*$/, "") || "";
-
-  return { url, title: result.title, year: result.year, platformName: match.package?.clearName || "" };
+  return { url: match.url, title: best.title, year: best.year, platformName: match.platform };
 }
 
 /** Get ALL available platforms for a show, plus search metadata for Stremio. */
@@ -225,18 +214,16 @@ export async function getAllPlatforms(
   offers: Array<{ url: string; platform: string; title: string; year?: number }>;
 }> {
   const results = await searchJustWatchFull(query, country, lang);
-  const result = results[0];
-  if (!result) return { meta: null, offers: [] };
-
-  const offers = await getOffers(result.fullPath, country);
+  const best = results[0];
+  if (!best) return { meta: null, offers: [] };
 
   return {
-    meta: result,
-    offers: offers.map((o) => ({
-      url: o.standardWebURL?.replace(/[?&]utm_source=.*$/, "") || "",
-      platform: o.package?.clearName || "",
-      title: result.title,
-      year: result.year,
+    meta: best,
+    offers: (best.offers || []).map((o) => ({
+      url: o.url,
+      platform: o.platform,
+      title: best.title,
+      year: best.year,
     })),
   };
 }
