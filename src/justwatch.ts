@@ -109,23 +109,11 @@ export async function searchJustWatchFull(query: string, country: string, lang: 
   };
   const edges: RawEdge[] = data?.data?.popularTitles?.edges || [];
 
-  // Score and rank
-  const q = query.toLowerCase();
-  const scored = edges.map((e) => {
-    const t = e.node.content.title?.toLowerCase() || "";
-    let score = 0;
-    if (t === q) score = 100;
-    else if (t.startsWith(q)) score = 50;
-    else if (t.includes(q)) score = 25;
-    return { ...e.node, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-
-  return scored.map((e) => {
-    const c = e.content;
+  return edges.map((e) => {
+    const c = e.node.content;
     return {
-      id: e.id,
-      objectType: e.objectType,
+      id: e.node.id,
+      objectType: e.node.objectType,
       imdbId: c.externalIds?.imdbId,
       tmdbId: c.externalIds?.tmdbId,
       title: c.title,
@@ -134,7 +122,7 @@ export async function searchJustWatchFull(query: string, country: string, lang: 
       runtime: c.runtime,
       genres: c.genres?.map((g) => g.shortName),
       posterUrl: c.posterUrl,
-      offers: (e.offers || []).map((o) => ({
+      offers: (e.node.offers || []).map((o) => ({
         url: o.standardWebURL?.replace(/[?&]utm_source=.*$/, "") || "",
         platform: o.package?.clearName || "",
         monetizationType: o.monetizationType,
