@@ -19,7 +19,7 @@ function buildUrl(id: string): string {
 async function openApp(toast: Toast) {
   await wakeAndCast(toast, APP_INTENT);
   toast.style = Toast.Style.Success;
-  toast.title = "🎬 Netflix";
+  toast.title = "Netflix";
   toast.message = "App opened";
 }
 
@@ -87,8 +87,8 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     await setLastQuery(STORAGE_KEY, input);
 
     toast.style = Toast.Style.Success;
-    toast.title = `🎬 ${best.label}`;
-    toast.message = subtitle;
+    toast.title = "Netflix";
+    toast.message = best.label;
   } catch (err) {
     toast.title = "Opening Netflix…";
     toast.message = err instanceof Error ? err.message : "Search failed, launching app";

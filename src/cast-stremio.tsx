@@ -58,7 +58,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     await wakeAndCast(toast, buildStremioIntent(best));
 
     toast.style = Toast.Style.Success;
-    toast.title = `🎬 ${best.title}`;
+    toast.title = "Stremio";
     toast.message = subtitle;
   } catch (err) {
     toast.style = Toast.Style.Failure;

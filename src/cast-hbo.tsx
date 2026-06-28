@@ -53,7 +53,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
       toast.message = "Not found on HBO Max, launching app";
       await wakeAndCast(toast, "am start -n com.hbo.hbonow/com.wbd.beam.BeamActivity -f 0x10000020");
       toast.style = Toast.Style.Success;
-      toast.title = "🎬 HBO Max";
+      toast.title = "HBO Max";
       toast.message = input;
       return;
     }
@@ -76,14 +76,14 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     await setLastQuery(STORAGE_KEY, input);
 
     toast.style = Toast.Style.Success;
-    toast.title = `🎬 ${result.title}`;
+    toast.title = "HBO Max";
     toast.message = footer;
   } catch (err) {
     toast.title = "Opening HBO Max…";
     toast.message = err instanceof Error ? err.message : "Search failed, launching app";
     await wakeAndCast(toast, "am start -n com.hbo.hbonow/com.wbd.beam.BeamActivity -f 0x10000020");
     toast.style = Toast.Style.Success;
-    toast.title = "🎬 HBO Max";
+    toast.title = "HBO Max";
     toast.message = "App opened";
   }
 }

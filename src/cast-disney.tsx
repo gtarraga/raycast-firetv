@@ -39,7 +39,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
         "am start -n com.disney.disneyplus/com.bamtechmedia.dominguez.main.MainActivity -f 0x10000020",
       );
       toast.style = Toast.Style.Success;
-      toast.title = "🎬 Disney+";
+      toast.title = "Disney+";
       toast.message = input;
       return;
     }
@@ -58,7 +58,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     await setLastQuery(STORAGE_KEY, input);
 
     toast.style = Toast.Style.Success;
-    toast.title = `🎬 ${result.title}`;
+    toast.title = "Disney+";
     toast.message = footer;
   } catch (err) {
     toast.title = "Opening Disney+…";
@@ -68,7 +68,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
       "am start -n com.disney.disneyplus/com.bamtechmedia.dominguez.main.MainActivity -f 0x10000020",
     );
     toast.style = Toast.Style.Success;
-    toast.title = "🎬 Disney+";
+    toast.title = "Disney+";
     toast.message = "App opened";
   }
 }

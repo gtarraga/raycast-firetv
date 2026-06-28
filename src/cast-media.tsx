@@ -46,6 +46,7 @@ async function resolveHboUrl(titles: string[]): Promise<string | null> {
 
 interface PlatformDef {
   jwNames: string[];
+  displayName: string;
   intent: (url: string) => string;
   fallbackIntent: string;
 }
@@ -53,6 +54,7 @@ interface PlatformDef {
 const PLATFORM_DEFS: Record<string, PlatformDef> = {
   hbo: {
     jwNames: ["Max", "HBO Max"],
+    displayName: "HBO Max",
     // HBO URLs come from resolveHboUrl() (hbo.com scraper → show page),
     // NOT from JustWatch `standardWebURL` directly.  JustWatch gives
     // video/watch links that autoplay S1E1; we want the show landing page
@@ -62,24 +64,28 @@ const PLATFORM_DEFS: Record<string, PlatformDef> = {
   },
   disney: {
     jwNames: ["Disney Plus"],
+    displayName: "Disney+",
     intent: (url) =>
       `am start -a android.intent.action.VIEW -d "${url}" -f 0x10000020 -e source 30 com.disney.disneyplus`,
     fallbackIntent: "am start -n com.disney.disneyplus/com.bamtechmedia.dominguez.main.MainActivity -f 0x10000020",
   },
   netflix: {
     jwNames: ["Netflix"],
+    displayName: "Netflix",
     intent: (url) => `am start -a android.intent.action.VIEW -d "${url}" -f 0x10000020 -e source 30 com.netflix.ninja`,
     fallbackIntent:
       'am start -a android.intent.action.VIEW -d "https://www.netflix.com" -f 0x10000020 -e source 30 com.netflix.ninja',
   },
   prime: {
     jwNames: ["Amazon Prime Video", "Amazon Video"],
+    displayName: "Prime Video",
     // JustWatch Prime URLs are /detail?gti=... — may autoplay. Open app home.
     intent: () => "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
     fallbackIntent: "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
   },
   stremio: {
     jwNames: [], // Stremio resolved via JustWatch IMDb ID
+    displayName: "Stremio",
     intent: (url) => `am start -a android.intent.action.VIEW -d "${url}" com.stremio.one`,
     fallbackIntent: "",
   },
@@ -150,7 +156,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
           await wakeAndCast(toast, intent);
           await setLastQuery(STORAGE_KEY, input);
           toast.style = Toast.Style.Success;
-          toast.title = `🎬 ${stremioName}`;
+          toast.title = "Stremio";
           toast.message = stremioYear;
           return;
         }
@@ -174,7 +180,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
           await wakeAndCast(toast, def.intent(hboUrl));
           await setLastQuery(STORAGE_KEY, input);
           toast.style = Toast.Style.Success;
-          toast.title = `🎬 ${showName}`;
+          toast.title = def.displayName;
           toast.message = titleYear;
           return;
         }
@@ -185,7 +191,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
         await wakeAndCast(toast, def.fallbackIntent);
         await setLastQuery(STORAGE_KEY, input);
         toast.style = Toast.Style.Success;
-        toast.title = `🎬 ${showName}`;
+        toast.title = def.displayName;
         toast.message = titleYear;
         return;
       }
@@ -197,7 +203,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
         await wakeAndCast(toast, def.intent(""));
         await setLastQuery(STORAGE_KEY, input);
         toast.style = Toast.Style.Success;
-        toast.title = `🎬 ${showName}`;
+        toast.title = def.displayName;
         toast.message = titleYear;
         return;
       }
@@ -208,7 +214,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
       await wakeAndCast(toast, def.intent(match.url));
       await setLastQuery(STORAGE_KEY, input);
       toast.style = Toast.Style.Success;
-      toast.title = `🎬 ${showName}`;
+      toast.title = def.displayName;
       toast.message = titleYear;
       return;
     }
@@ -221,7 +227,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
       'am start -a android.intent.action.VIEW -d "https://www.netflix.com" -f 0x10000020 -e source 30 com.netflix.ninja',
     );
     toast.style = Toast.Style.Success;
-    toast.title = "🎬 Netflix";
+    toast.title = "Netflix";
     toast.message = "App opened";
   } catch (err) {
     toast.style = Toast.Style.Failure;
