@@ -8,6 +8,7 @@ export interface Preferences {
   hasProjector: boolean;
   projectorEntityId: string;
   projectorMac: string;
+  countryCode: string;
 }
 
 let _prefs: Preferences | null = null;

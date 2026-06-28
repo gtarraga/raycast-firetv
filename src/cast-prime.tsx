@@ -1,5 +1,6 @@
 import { showToast, Toast, LaunchProps } from "@raycast/api";
-import { wakeAndCast } from "./hass";
+import { wakeAndCast, prefs } from "./hass";
+import { resolveShow } from "./justwatch";
 import { getLastQuery, setLastQuery } from "./storage";
 
 interface Arguments {
@@ -21,21 +22,50 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     return;
   }
 
-  const toast = await showToast(Toast.Style.Animated, `Opening Prime Video for "${input}"…`);
+  const toast = await showToast(Toast.Style.Animated, `Searching "${input}" on Prime Video…`);
 
   try {
+    const p = prefs();
+    const country = p.countryCode || "ES";
+    const lang = country.toLowerCase();
+
+    const result = await resolveShow(input, "prime", country, lang);
+
+    if (!result?.url) {
+      toast.title = "Opening Prime Video…";
+      toast.message = "Not found on Prime, launching app";
+      await wakeAndCast(
+        toast,
+        "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
+      );
+      toast.style = Toast.Style.Success;
+      toast.title = "🎬 Prime Video";
+      toast.message = input;
+      return;
+    }
+
+    toast.title = `Casting ${result.title}…`;
+    toast.message = result.platformName;
+
+    await wakeAndCast(
+      toast,
+      `am start -a android.intent.action.VIEW -d "${result.url}" -f 0x10000020 com.amazon.avod`,
+    );
+
+    await setLastQuery(STORAGE_KEY, input);
+
+    toast.style = Toast.Style.Success;
+    toast.title = `🎬 ${result.title}`;
+    toast.message = result.platformName;
+  } catch (err) {
+    toast.title = "Opening Prime Video…";
+    toast.message = err instanceof Error ? err.message : "Search failed, launching app";
     await wakeAndCast(
       toast,
       "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
     );
-    await setLastQuery(STORAGE_KEY, input);
-
     toast.style = Toast.Style.Success;
     toast.title = "🎬 Prime Video";
-    toast.message = input;
-  } catch (err) {
-    toast.style = Toast.Style.Failure;
-    toast.title = "Failed";
-    toast.message = err instanceof Error ? err.message : String(err);
+    toast.message = "App opened";
   }
 }

@@ -18,6 +18,8 @@ type ExtensionPreferences = {
   "hasProjector": boolean,
   /** Projector Entity - media_player entity for projector */
   "projectorEntityId"?: string,
+  /** JustWatch Country Code - 2-letter country code for regional content (e.g. ES, US, GB) */
+  "countryCode": string,
   /** Projector MAC Address - MAC address for Wake-on-LAN magic packet */
   "projectorMac"?: string
 }

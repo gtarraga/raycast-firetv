@@ -146,6 +146,15 @@
       "placeholder": "media_player.projector"
     },
     {
+      "name": "countryCode",
+      "type": "textfield",
+      "required": false,
+      "default": "ES",
+      "title": "JustWatch Country Code",
+      "description": "2-letter country code for regional content (e.g. ES, US, GB)",
+      "placeholder": "ES"
+    },
+    {
       "name": "projectorMac",
       "type": "textfield",
       "required": false,
