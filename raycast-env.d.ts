@@ -20,6 +20,8 @@ type ExtensionPreferences = {
   "projectorEntityId"?: string,
   /** JustWatch Country Code - 2-letter country code for regional content (e.g. ES, US, GB) */
   "countryCode": string,
+  /** Platform Priority - Comma-separated order: hbo,disney,netflix,stremio,prime */
+  "platformPriority": string,
   /** Projector MAC Address - MAC address for Wake-on-LAN magic packet */
   "projectorMac"?: string
 }
@@ -28,6 +30,8 @@ type ExtensionPreferences = {
 declare type Preferences = ExtensionPreferences
 
 declare namespace Preferences {
+  /** Preferences accessible in the `cast-show` command */
+  export type CastShow = ExtensionPreferences & {}
   /** Preferences accessible in the `cast-youtube` command */
   export type CastYoutube = ExtensionPreferences & {}
   /** Preferences accessible in the `cast-stremio` command */
@@ -43,6 +47,11 @@ declare namespace Preferences {
 }
 
 declare namespace Arguments {
+  /** Arguments passed to the `cast-show` command */
+  export type CastShow = {
+  /** Show/Movie Name or YouTube URL */
+  "query": string
+}
   /** Arguments passed to the `cast-youtube` command */
   export type CastYoutube = {
   /** YouTube Link */

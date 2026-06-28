@@ -11,16 +11,16 @@ interface JustWatchOffer {
 }
 
 /** Map our internal platform keys to JustWatch package names */
-const PLATFORM_MAP: Record<string, string> = {
-  disney: "Disney Plus",
-  hbo: "Max",
-  max: "Max",
-  prime: "Amazon Prime Video",
+const PLATFORM_MAP: Record<string, string[]> = {
+  disney: ["Disney Plus"],
+  hbo: ["Max", "HBO Max"],
+  max: ["Max", "HBO Max"],
+  prime: ["Amazon Prime Video", "Amazon Video"],
 };
 
 /** Map our internal platform keys to JustWatch package names */
-export function getJWPlatform(key: string): string {
-  return PLATFORM_MAP[key] || key;
+export function getJWPlatforms(key: string): string[] {
+  return PLATFORM_MAP[key] || [key];
 }
 
 async function jwQuery(query: string, variables: Record<string, unknown>) {
@@ -33,25 +33,39 @@ async function jwQuery(query: string, variables: Record<string, unknown>) {
   return res.json();
 }
 
-/** Search JustWatch for a show/movie. Returns the first match's fullPath. */
+/** Search JustWatch for a show/movie. Returns best title match with year. */
 export async function searchJustWatch(
-  title: string,
+  query: string,
   country: string,
   lang: string,
-): Promise<{ fullPath: string; title: string } | null> {
+): Promise<{ fullPath: string; title: string; year?: number } | null> {
   const data = await jwQuery(
     `query Search($q: String!, $country: Country!, $lang: Language!) {
-      popularTitles(country: $country, first: 3, filter: { searchQuery: $q }) {
-        edges { node { content(country: $country, language: $lang) { fullPath title } } }
+      popularTitles(country: $country, first: 10, filter: { searchQuery: $q }) {
+        edges { node { content(country: $country, language: $lang) { fullPath title originalReleaseYear } } }
       }
     }`,
-    { q: title, country, lang },
+    { q: query, country, lang },
   );
-  const edges = data?.data?.popularTitles?.edges;
-  if (!edges?.length) return null;
-  const content = edges[0]?.node?.content;
-  if (!content?.fullPath) return null;
-  return { fullPath: content.fullPath, title: content.title };
+  const edges: Array<{ node: { content: { fullPath: string; title: string; originalReleaseYear?: number } } }> =
+    data?.data?.popularTitles?.edges || [];
+  if (!edges.length) return null;
+
+  // Pick best match: exact title > starts with > contains
+  const q = query.toLowerCase();
+  const scored = edges.map((e) => {
+    const t = e.node.content.title.toLowerCase();
+    let score = 0;
+    if (t === q) score = 100;
+    else if (t.startsWith(q)) score = 50;
+    else if (t.includes(q)) score = 25;
+    return { ...e.node.content, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+
+  const best = scored[0];
+  if (!best?.fullPath) return null;
+  return { fullPath: best.fullPath, title: best.title, year: best.originalReleaseYear };
 }
 
 /** Get all streaming offers for a JustWatch path. */
@@ -79,21 +93,21 @@ export async function resolveShow(
   platform: string,
   country: string,
   lang: string,
-): Promise<{ url: string; title: string; platformName: string } | null> {
-  const targetPackage = getJWPlatform(platform);
+): Promise<{ url: string; title: string; year?: number; platformName: string } | null> {
+  const targetPackages = getJWPlatforms(platform);
 
   const result = await searchJustWatch(query, country, lang);
   if (!result) return null;
 
   const offers = await getOffers(result.fullPath, country);
 
-  const match = offers.find((o) => o.package?.clearName === targetPackage);
+  const match = offers.find((o) => targetPackages.includes(o.package?.clearName || ""));
   if (!match) return null;
 
   // Clean affiliate tracking params from URL
   const url = match.standardWebURL?.replace(/[?&]utm_source=.*$/, "") || "";
 
-  return { url, title: result.title, platformName: targetPackage };
+  return { url, title: result.title, year: result.year, platformName: match.package?.clearName || "" };
 }
 
 /** Get ALL available platforms for a show. */
@@ -101,7 +115,7 @@ export async function getAllPlatforms(
   query: string,
   country: string,
   lang: string,
-): Promise<Array<{ url: string; platform: string; title: string }>> {
+): Promise<Array<{ url: string; platform: string; title: string; year?: number }>> {
   const result = await searchJustWatch(query, country, lang);
   if (!result) return [];
 
@@ -111,5 +125,6 @@ export async function getAllPlatforms(
     url: o.standardWebURL?.replace(/[?&]utm_source=.*$/, "") || "",
     platform: o.package?.clearName || "",
     title: result.title,
+    year: result.year,
   }));
 }

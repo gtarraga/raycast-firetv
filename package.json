@@ -14,6 +14,21 @@
   "license": "MIT",
   "commands": [
     {
+      "name": "cast-show",
+      "title": "Cast Show",
+      "subtitle": "Fire TV Cast",
+      "description": "Auto-detect platform and cast any show or movie by name. YouTube URLs open SmartTube.",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "query",
+          "placeholder": "Show/Movie Name or YouTube URL",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "cast-youtube",
       "title": "Cast YouTube",
       "subtitle": "Fire TV Cast",
@@ -153,6 +168,15 @@
       "title": "JustWatch Country Code",
       "description": "2-letter country code for regional content (e.g. ES, US, GB)",
       "placeholder": "ES"
+    },
+    {
+      "name": "platformPriority",
+      "type": "textfield",
+      "required": false,
+      "default": "hbo,disney,netflix,stremio,prime",
+      "title": "Platform Priority",
+      "description": "Comma-separated order: hbo,disney,netflix,stremio,prime",
+      "placeholder": "hbo,disney,netflix,stremio,prime"
     },
     {
       "name": "projectorMac",
