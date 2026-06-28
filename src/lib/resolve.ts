@@ -65,8 +65,6 @@ async function resolveHboUrl(
     // ── Level 1: direct hbo.com vanity URL ──────────────────
     const path = objectType === "MOVIE" ? `/movies/${slug}` : `/${slug}`;
     const url = `https://www.hbo.com${path}`;
-    console.log("[resolve] hbo.com direct:", url, `(from "${title}")`);
-
     const res = await fetch(url, {
       headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml", "Accept-Language": "en-US,en;q=0.9" },
       redirect: "follow",
@@ -75,17 +73,11 @@ async function resolveHboUrl(
     const uuid = extractUuid(res.url);
     if (uuid && res.url !== url) {
       const hboUrl = `https://play.hbomax.com/show/${uuid}`;
-      console.log("[resolve] hbo.com redirect → UUID:", uuid);
       return hboUrl;
     }
-    console.log("[resolve] hbo.com HTTP", res.status, `for ${path}`);
-
     // ── Level 2: Startpage web search ───────────────────────
     const spUrl = await searchStartpage(title);
-    if (spUrl) {
-      console.log("[resolve] Startpage →", spUrl);
-      return spUrl;
-    }
+    if (spUrl) return spUrl;
   }
   return null;
 }
@@ -180,29 +172,12 @@ export async function resolveMedia(
   const results = await searchJustWatchFull(query, country, lang);
   const best = results[0];
 
-  console.log("[resolve] query:", query);
-  console.log("[resolve] country/lang:", country, lang);
-  console.log(
-    "[resolve] JustWatch #1:",
-    best
-      ? JSON.stringify({
-          title: best.title,
-          originalTitle: best.originalTitle,
-          year: best.year,
-          offers: (best.offers || []).map((o) => o.platform),
-        })
-      : "no results",
-  );
-
   if (!best) return null;
 
   for (const plat of platforms) {
     // Stremio — resolved via IMDb ID, not JustWatch offer
     if (plat === "stremio") {
-      if (best.imdbId) {
-        console.log("[resolve] platform Stremio — IMDb:", best.imdbId);
-        return makeMatch("stremio", "", buildStremioIntent(best.imdbId, best.objectType), best);
-      }
+      if (best.imdbId) return makeMatch("stremio", "", buildStremioIntent(best.imdbId, best.objectType), best);
       continue;
     }
 
@@ -216,30 +191,20 @@ export async function resolveMedia(
         [best.originalTitle, best.title, query].filter(Boolean) as string[],
         best.objectType,
       );
-      if (hboUrl) {
-        console.log("[resolve] platform HBO — resolved:", hboUrl);
-        return makeMatch("hbo", hboUrl, buildHboIntent(hboUrl), best);
-      }
-      // both levels failed — open app home
-      console.log("[resolve] platform HBO — not found, app home");
+      if (hboUrl) return makeMatch("hbo", hboUrl, buildHboIntent(hboUrl), best);
       return makeMatch("hbo", "", "am start -n com.hbo.hbonow/com.wbd.beam.BeamActivity -f 0x10000020", best, true);
     }
 
     // Prime Video: open app home (detail URLs may autoplay)
     if (plat === "prime") {
       if (!match?.url) continue;
-      console.log("[resolve] platform Prime — app home");
       return makeMatch("prime", "", buildPrimeIntent(), best);
     }
 
     // Disney+ / Netflix: deep-link from JustWatch offer URL
-    if (match?.url) {
-      console.log("[resolve] platform", plat, "— deep link:", match.url);
-      return makeMatch(plat, match.url, buildIntent(plat, match.url), best);
-    }
+    if (match?.url) return makeMatch(plat, match.url, buildIntent(plat, match.url), best);
   }
 
-  console.log("[resolve] no platform matched");
   return null;
 }
 
