@@ -4,7 +4,6 @@
  */
 
 import { searchJustWatchFull, JWTitleResult } from "../justwatch";
-import { searchWikidata, getClaimValues } from "../wikidata";
 
 export interface MediaMatch {
   platform: string;
@@ -109,24 +108,6 @@ function makeMatch(
 
 // ── Main entry point ─────────────────────────────────────────
 
-/** Resolve Netflix title ID via Wikidata (JustWatch URLs don't deep-link on Fire TV). */
-async function resolveNetflix(query: string, jwResult: JWTitleResult): Promise<MediaMatch | null> {
-  const results = await searchWikidata(query, 5);
-  if (results.length === 0) return null;
-
-  const topIds = results.slice(0, 5).map((r) => r.id);
-  const values = await getClaimValues(topIds, "P1874");
-
-  for (const r of results) {
-    const val = values.get(r.id);
-    if (val) {
-      const url = `https://www.netflix.com/title/${val}`;
-      return makeMatch("netflix", url, buildNetflixIntent(url), jwResult);
-    }
-  }
-  return null;
-}
-
 /**
  * Resolve a query to a specific platform's deep-link intent.
  * Platforms are tried in priority order.  Returns the first match.
@@ -135,8 +116,7 @@ async function resolveNetflix(query: string, jwResult: JWTitleResult): Promise<M
  *   Falls back to opening the HBO Max app home.
  * - Prime: always opens app home (JustWatch URLs may autoplay).
  * - Stremio: resolved via IMDb ID from JustWatch metadata.
- * - Netflix: resolved via Wikidata title ID (JustWatch URLs don't deep-link on Fire TV).
- * - Disney+: deep-linked from JustWatch offer URL.
+ * - Disney+ / Netflix: deep-linked from JustWatch offer URL.
  *
  * Returns null only when NO platform matched at all.
  */
@@ -176,14 +156,7 @@ export async function resolveMedia(
       return makeMatch("prime", "", buildPrimeIntent(), best);
     }
 
-    // Netflix: resolve via Wikidata (JustWatch URLs don't deep-link on Fire TV)
-    if (plat === "netflix") {
-      const netflixMatch = await resolveNetflix(query, best);
-      if (netflixMatch) return netflixMatch;
-      continue;
-    }
-
-    // Disney+: deep-link from JustWatch offer URL
+    // Disney+ / Netflix: deep-link from JustWatch offer URL
     if (match?.url) {
       return makeMatch(plat, match.url, buildIntent(plat, match.url), best);
     }
