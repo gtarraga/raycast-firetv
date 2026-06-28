@@ -10,10 +10,10 @@ interface Arguments {
 const STORAGE_KEY = "show";
 
 /**
- * Resolve an HBO/Max show-page URL by scraping hbo.com.
+ * Resolve an HBO Max show-page URL by scraping hbo.com.
  *
  * Why not use JustWatch URLs directly?
- *   JustWatch `standardWebURL` for Max gives video/watch pages that autoplay
+ *   JustWatch `standardWebURL` for HBO Max gives video/watch pages that autoplay
  *   (e.g. S1E1) — user can't pick episode.  We want the show's landing page.
  *
  * Flow:
@@ -24,7 +24,7 @@ const STORAGE_KEY = "show";
  *
  * Falls back to null if hbo.com doesn't know the title (scraper returns 404
  * or the page doesn't embed a play.hbomax.com link).  Caller then opens the
- * Max app home instead of deep-linking.
+ * HBO Max app home instead of deep-linking.
  */
 async function resolveHboUrl(titles: string[]): Promise<string | null> {
   for (const title of titles) {
@@ -159,7 +159,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
       const showName = match.title || input;
       const titleYear = match.year ? `${showName} · ${match.year}` : showName;
 
-      // HBO/Max: scrape hbo.com for show-page URL (JustWatch gives
+      // HBO Max: scrape hbo.com for show-page URL (JustWatch gives
       // video/watch links that autoplay — we want the landing page).
       if (platKey === "hbo") {
         const hboUrl = await resolveHboUrl([showName, input]);
@@ -173,7 +173,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
           toast.message = titleYear;
           return;
         }
-        // hbo.com scraper didn't find the title — open Max app home
+        // hbo.com scraper didn't find the title — open HBO Max app home
         // (don't fall back to JustWatch video URL; it would autoplay)
         toast.title = `Opening HBO Max…`;
         toast.message = titleYear;

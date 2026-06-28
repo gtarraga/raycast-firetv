@@ -26,7 +26,7 @@ export interface JWTitleResult {
 /**
  * Map internal platform keys to JustWatch package `clearName` strings.
  *
- * HBO/Max: JustWatch has used both "HBO Max" and "Max" depending on
+ * HBO Max: JustWatch has used both "HBO Max" and "Max" depending on
  * region/rebrand timing.  We match either so we catch titles that were
  * indexed before the rebrand as well as current "Max" listings.
  */
