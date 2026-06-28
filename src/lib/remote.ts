@@ -129,12 +129,22 @@ export async function sendIntent(config: RemoteConfig, intent: string): Promise<
   });
 }
 
+/** Force-stop an Android app by package name (e.g. "com.hbo.hbonow"). */
+export async function killApp(config: RemoteConfig, packageName: string): Promise<void> {
+  await callService(config, "androidtv", "adb_command", {
+    entity_id: config.entityId,
+    command: `am force-stop ${packageName}`,
+  });
+}
+
 export async function wakeAndLaunch(
   config: RemoteConfig,
   intent: string,
   onProgress?: (msg: string) => void,
+  killPackage?: string,
 ): Promise<void> {
   const projWasOff = await wakeProjector(config, onProgress);
   await wakeFireTV(config, projWasOff, onProgress);
+  if (killPackage) await killApp(config, killPackage);
   await sendIntent(config, intent);
 }

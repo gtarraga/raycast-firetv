@@ -106,9 +106,14 @@ export async function runCommand(
 
     toast.title = `Opening ${displayName}…`;
     toast.message = footer;
-    await wakeAndLaunch(config, match.intent, (msg) => {
-      toast.message = msg;
-    });
+    await wakeAndLaunch(
+      config,
+      match.intent,
+      (msg) => {
+        toast.message = msg;
+      },
+      match.platform === "hbo" ? "com.hbo.hbonow" : undefined,
+    );
     await setLastQuery(storageKey, input);
     toast.style = Toast.Style.Success;
     toast.title = displayName;
