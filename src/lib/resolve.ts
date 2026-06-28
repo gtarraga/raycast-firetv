@@ -46,49 +46,53 @@ async function resolveHboUrl(titles: string[]): Promise<string | null> {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/-+$/g, "");
     if (!slug) continue;
-    const url = `https://www.hbo.com/content/${slug}`;
-    console.log("[resolve] hbo.com scrape:", url, `(from title "${title}")`);
-    const res = await fetch(url, { headers });
-    if (!res.ok) {
-      console.log("[resolve] hbo.com HTTP", res.status, `for ${slug}`);
-      continue;
-    }
-    const html = await res.text();
 
-    // Find seriesId that appears near seasonNumber — this is the page's own show.
-    // HTML has escaped JSON: `\"seriesId\"` etc.
-    // Strategy: find UUIDs near seriesId, check if seasonNumber nearby.
-    const sidGlobal = /seriesId[^a-f0-9]*([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/g;
-    let sidExec: RegExpExecArray | null;
-    while ((sidExec = sidGlobal.exec(html)) !== null) {
-      const sid = sidExec[1];
-      const after = html.slice(sidExec.index, sidExec.index + 2000);
-      if (/seasonNumber\D*\d+/.test(after)) {
-        const hboUrl = `https://play.hbomax.com/show/${sid}`;
-        console.log("[resolve] hbo.com found UUID (seriesId+episode):", hboUrl);
+    // Try both /content/<slug> (shows) and /content/movies/<slug> (movies)
+    for (const contentPath of [`/content/${slug}`, `/content/movies/${slug}`]) {
+      const url = `https://www.hbo.com${contentPath}`;
+      console.log("[resolve] hbo.com scrape:", url, `(from title "${title}")`);
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        console.log("[resolve] hbo.com HTTP", res.status, `for ${contentPath}`);
+        continue;
+      }
+      const html = await res.text();
+
+      // Find seriesId that appears near seasonNumber — this is the page's own show.
+      // HTML has escaped JSON: `\"seriesId\"` etc.
+      // Strategy: find UUIDs near seriesId, check if seasonNumber nearby.
+      const sidGlobal = /seriesId[^a-f0-9]*([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/g;
+      let sidExec: RegExpExecArray | null;
+      while ((sidExec = sidGlobal.exec(html)) !== null) {
+        const sid = sidExec[1];
+        const after = html.slice(sidExec.index, sidExec.index + 2000);
+        if (/seasonNumber\D*\d+/.test(after)) {
+          const hboUrl = `https://play.hbomax.com/show/${sid}`;
+          console.log("[resolve] hbo.com found UUID (seriesId+episode):", hboUrl);
+          return hboUrl;
+        }
+      }
+
+      // New format: max.com/shows/<slug>/<uuid> or max.com/movies/<slug>/<uuid>
+      const newMatch = html.match(
+        /max\.com\/(?:shows|movies)\/[a-z0-9-]+\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
+      );
+      if (newMatch) {
+        const hboUrl = `https://play.hbomax.com/show/${newMatch[1]}`;
+        console.log("[resolve] hbo.com found UUID (max.com):", hboUrl);
         return hboUrl;
       }
-    }
 
-    // New format: max.com/shows/<slug>/<uuid> or max.com/movies/<slug>/<uuid>
-    const newMatch = html.match(
-      /max\.com\/(?:shows|movies)\/[a-z0-9-]+\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
-    );
-    if (newMatch) {
-      const hboUrl = `https://play.hbomax.com/show/${newMatch[1]}`;
-      console.log("[resolve] hbo.com found UUID (max.com):", hboUrl);
-      return hboUrl;
-    }
-
-    // Old format: play.hbomax.com/show/<uuid> or play.hbomax.com/shows/<uuid>
-    const oldMatch = html.match(
-      /play\.hbomax\.com\/shows?\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
-    );
-    if (oldMatch) {
-      const hboUrl = `https://play.hbomax.com/show/${oldMatch[1]}`;
-      console.log("[resolve] hbo.com found UUID (play.hbomax):", hboUrl);
-      return hboUrl;
-    }
+      // Old format: play.hbomax.com/show/<uuid> or play.hbomax.com/shows/<uuid>
+      const oldMatch = html.match(
+        /play\.hbomax\.com\/shows?\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
+      );
+      if (oldMatch) {
+        const hboUrl = `https://play.hbomax.com/show/${oldMatch[1]}`;
+        console.log("[resolve] hbo.com found UUID (play.hbomax):", hboUrl);
+        return hboUrl;
+      }
+    } // end content path loop
 
     console.log("[resolve] hbo.com no UUID in HTML for", slug);
   }
