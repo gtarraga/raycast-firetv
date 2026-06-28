@@ -4,6 +4,7 @@
  */
 
 import { searchJustWatchFull, JWTitleResult } from "../justwatch";
+import { searchWikidata, getClaimValues } from "../wikidata";
 
 export interface MediaMatch {
   platform: string;
@@ -12,6 +13,8 @@ export interface MediaMatch {
   title: string;
   originalTitle?: string;
   year?: number;
+  /** True when deep-link failed and we fell back to opening the app home */
+  fallback?: boolean;
 }
 
 /** JustWatch package clearNames each platform key matches */
@@ -86,11 +89,43 @@ function buildIntent(platform: string, url: string): string {
   }
 }
 
-function makeMatch(platform: string, url: string, intent: string, result: JWTitleResult): MediaMatch {
-  return { platform, url, intent, title: result.title, originalTitle: result.originalTitle, year: result.year };
+function makeMatch(
+  platform: string,
+  url: string,
+  intent: string,
+  result: JWTitleResult,
+  fallback?: boolean,
+): MediaMatch {
+  return {
+    platform,
+    url,
+    intent,
+    title: result.title,
+    originalTitle: result.originalTitle,
+    year: result.year,
+    fallback,
+  };
 }
 
 // ── Main entry point ─────────────────────────────────────────
+
+/** Resolve Netflix title ID via Wikidata (JustWatch URLs don't deep-link on Fire TV). */
+async function resolveNetflix(query: string, jwResult: JWTitleResult): Promise<MediaMatch | null> {
+  const results = await searchWikidata(query, 5);
+  if (results.length === 0) return null;
+
+  const topIds = results.slice(0, 5).map((r) => r.id);
+  const values = await getClaimValues(topIds, "P1874");
+
+  for (const r of results) {
+    const val = values.get(r.id);
+    if (val) {
+      const url = `https://www.netflix.com/title/${val}`;
+      return makeMatch("netflix", url, buildNetflixIntent(url), jwResult);
+    }
+  }
+  return null;
+}
 
 /**
  * Resolve a query to a specific platform's deep-link intent.
@@ -100,7 +135,8 @@ function makeMatch(platform: string, url: string, intent: string, result: JWTitl
  *   Falls back to opening the HBO Max app home.
  * - Prime: always opens app home (JustWatch URLs may autoplay).
  * - Stremio: resolved via IMDb ID from JustWatch metadata.
- * - Disney+ / Netflix: deep-linked from JustWatch offer URL.
+ * - Netflix: resolved via Wikidata title ID (JustWatch URLs don't deep-link on Fire TV).
+ * - Disney+: deep-linked from JustWatch offer URL.
  *
  * Returns null only when NO platform matched at all.
  */
@@ -131,7 +167,7 @@ export async function resolveMedia(
       const hboUrl = await resolveHboUrl([best.title, query]);
       if (hboUrl) return makeMatch("hbo", hboUrl, buildHboIntent(hboUrl), best);
       // scraper failed — open app home (don't fall back to video URL)
-      return makeMatch("hbo", "", "am start -n com.hbo.hbonow/com.wbd.beam.BeamActivity -f 0x10000020", best);
+      return makeMatch("hbo", "", "am start -n com.hbo.hbonow/com.wbd.beam.BeamActivity -f 0x10000020", best, true);
     }
 
     // Prime Video: open app home (detail URLs may autoplay)
@@ -140,7 +176,14 @@ export async function resolveMedia(
       return makeMatch("prime", "", buildPrimeIntent(), best);
     }
 
-    // Disney+ / Netflix: deep-link to show page
+    // Netflix: resolve via Wikidata (JustWatch URLs don't deep-link on Fire TV)
+    if (plat === "netflix") {
+      const netflixMatch = await resolveNetflix(query, best);
+      if (netflixMatch) return netflixMatch;
+      continue;
+    }
+
+    // Disney+: deep-link from JustWatch offer URL
     if (match?.url) {
       return makeMatch(plat, match.url, buildIntent(plat, match.url), best);
     }
