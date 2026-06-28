@@ -141,13 +141,15 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
         if (meta?.imdbId) {
           const type = meta.objectType === "SHOW" ? "series" : "movie";
           const intent = `am start -a android.intent.action.VIEW -d "stremio:///detail/${type}/${meta.imdbId}" com.stremio.one`;
+          const stremioName = meta.title || input;
+          const stremioYear = meta.year ? `${stremioName} · ${meta.year}` : stremioName;
           toast.title = `Casting via Stremio…`;
-          toast.message = input;
+          toast.message = stremioYear;
           await wakeAndCast(toast, intent);
           await setLastQuery(STORAGE_KEY, input);
           toast.style = Toast.Style.Success;
-          toast.title = `🎬 ${input}`;
-          toast.message = "Stremio";
+          toast.title = `🎬 ${stremioName}`;
+          toast.message = stremioYear;
           return;
         }
         continue;

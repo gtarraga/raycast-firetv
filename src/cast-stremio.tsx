@@ -12,8 +12,7 @@ function buildStremioIntent(result: JWTitleResult): string {
 }
 
 function formatLabel(result: JWTitleResult): string {
-  const label = result.objectType === "SHOW" ? "Series" : "Movie";
-  return result.year ? `${label} · ${result.year}` : label;
+  return result.year ? `${result.title} · ${result.year}` : result.title;
 }
 
 export default async function Command(props: LaunchProps<{ arguments: Arguments }>) {
