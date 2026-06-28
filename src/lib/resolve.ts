@@ -71,14 +71,6 @@ function buildPrimeIntent(): string {
   return "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020";
 }
 
-const FALLBACK_INTENTS: Record<string, string> = {
-  hbo: "am start -n com.hbo.hbonow/com.wbd.beam.BeamActivity -f 0x10000020",
-  disney: "am start -n com.disney.disneyplus/com.bamtechmedia.dominguez.main.MainActivity -f 0x10000020",
-  netflix:
-    'am start -a android.intent.action.VIEW -d "https://www.netflix.com" -f 0x10000020 -e source 30 com.netflix.ninja',
-  prime: buildPrimeIntent(),
-};
-
 function buildIntent(platform: string, url: string): string {
   switch (platform) {
     case "hbo":
@@ -122,13 +114,14 @@ export async function resolveMedia(
   const best = results[0];
   if (!best) return null;
 
-  // Stremio — resolved via IMDb ID, not JustWatch offer
-  if (platforms.includes("stremio") && best.imdbId) {
-    return makeMatch("stremio", "", buildStremioIntent(best.imdbId, best.objectType), best);
-  }
-
   for (const plat of platforms) {
-    if (plat === "stremio") continue; // handled above
+    // Stremio — resolved via IMDb ID, not JustWatch offer
+    if (plat === "stremio") {
+      if (best.imdbId) {
+        return makeMatch("stremio", "", buildStremioIntent(best.imdbId, best.objectType), best);
+      }
+      continue;
+    }
 
     const match = (best.offers || []).find((o) => platformMatches(plat, o.platform));
 
@@ -137,8 +130,9 @@ export async function resolveMedia(
       if (!match?.url) continue; // not on HBO Max, try next platform
       const hboUrl = await resolveHboUrl([best.title, query]);
       if (hboUrl) return makeMatch("hbo", hboUrl, buildHboIntent(hboUrl), best);
-      // scraper failed — open app home (don't fall back to video URL)
-      return makeMatch("hbo", "", FALLBACK_INTENTS.hbo, best);
+      // scraper failed — fall back to JustWatch URL (domain-rewrite to play.max.com)
+      const jwUrl = match.url.replace("play.hbomax.com", "play.max.com");
+      return makeMatch("hbo", jwUrl, buildHboIntent(jwUrl), best);
     }
 
     // Prime Video: open app home (detail URLs may autoplay)

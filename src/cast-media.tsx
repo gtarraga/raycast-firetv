@@ -1,4 +1,4 @@
-import { LaunchProps } from "@raycast/api";
+import { LaunchProps, Clipboard } from "@raycast/api";
 import { runCommand, launchYouTube } from "./lib/command";
 import { isYouTubeUrl } from "./lib/youtube";
 
@@ -7,7 +7,13 @@ interface Arguments {
 }
 
 export default async function Command(props: LaunchProps<{ arguments: Arguments }>) {
-  const query = props.arguments?.query?.trim();
+  let query = props.arguments?.query?.trim();
+
+  // Clipboard only for YouTube links — non-YouTube titles resolve via args or last-used query
+  if (!query) {
+    const clip = await Clipboard.readText();
+    if (clip) query = clip.trim();
+  }
 
   if (query && isYouTubeUrl(query)) {
     await launchYouTube(query);

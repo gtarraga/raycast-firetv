@@ -71,7 +71,7 @@ export async function runCommand(
   errorLabel: string,
   storageKey: string,
 ): Promise<void> {
-  const input = await resolveInput(props, storageKey, errorLabel, { useClipboard: true });
+  const input = await resolveInput(props, storageKey, errorLabel);
   if (!input) return;
 
   const toast = await showToast(Toast.Style.Animated, `Searching "${input}"…`);
