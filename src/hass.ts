@@ -56,7 +56,8 @@ async function isOff(entityId: string): Promise<boolean> {
   }
 }
 
-function parseMac(mac: string): Buffer {
+function parseMac(mac: string | undefined): Buffer {
+  if (!mac) throw new Error("Projector MAC address not configured");
   const hex = mac.replace(/[^0-9a-fA-F]/g, "");
   if (hex.length !== 12) throw new Error(`Invalid MAC: ${mac}`);
   return Buffer.from(hex, "hex");
@@ -91,7 +92,7 @@ type ProgressFn = (msg: string) => void;
 
 async function wakeProjector(update: ProgressFn): Promise<boolean> {
   const p = prefs();
-  if (!p.hasProjector) return false;
+  if (!p.hasProjector || !p.projectorMac) return false;
 
   const off = await isOff(p.projectorEntityId);
   if (!off) return false;
