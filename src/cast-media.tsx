@@ -1,6 +1,6 @@
 import { showToast, Toast, Clipboard, LaunchProps } from "@raycast/api";
 import { wakeAndCast, prefs } from "./hass";
-import { getAllPlatforms } from "./justwatch";
+import { getAllPlatforms, searchJustWatchFull } from "./justwatch";
 import { getLastQuery, setLastQuery } from "./storage";
 
 interface Arguments {
@@ -62,35 +62,11 @@ const PLATFORM_DEFS: Record<string, PlatformDef> = {
       "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
   },
   stremio: {
-    jwNames: [], // Not on JustWatch — uses Cinemeta
+    jwNames: [], // Stremio resolved via JustWatch IMDb ID
     intent: (url) => `am start -a android.intent.action.VIEW -d "${url}" com.stremio.one`,
     fallbackIntent: "",
   },
 };
-
-async function resolveStremio(query: string): Promise<string | null> {
-  const IMDB_ID_RE = /^(tt\d{7,8})$/i;
-  const directMatch = query.match(IMDB_ID_RE);
-  if (directMatch) return `stremio:///detail/movie/${directMatch[1]}`;
-
-  async function searchCinemeta(q: string, type: string) {
-    const url = `https://v3-cinemeta.strem.io/catalog/${type}/top/search=${encodeURIComponent(q)}.json`;
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = (await res.json()) as { metas?: Array<{ imdb_id: string; type: string; name: string }> };
-    return (data.metas || []).filter((m) => m.imdb_id);
-  }
-
-  const [movies, series] = await Promise.all([
-    searchCinemeta(query, "movie"),
-    searchCinemeta(query, "series"),
-  ]);
-  const best = movies[0] || series[0] || null;
-  if (!best) return null;
-
-  const mediaType = best.type === "series" ? "series" : "movie";
-  return `stremio:///detail/${mediaType}/${best.imdb_id}`;
-}
 
 export default async function Command(props: LaunchProps<{ arguments: Arguments }>) {
   let input = props.arguments?.query?.trim();
@@ -139,17 +115,26 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
 
     const allPlatforms = await getAllPlatforms(input, country, lang);
 
+    // Stremio helper — uses JustWatch for IMDb ID + type
+    async function getStremioIntent(): Promise<string | null> {
+      const results = await searchJustWatchFull(input, country, lang);
+      const best = results[0];
+      if (!best?.imdbId) return null;
+      const type = best.objectType === "SHOW" ? "series" : "movie";
+      return `am start -a android.intent.action.VIEW -d "stremio:///detail/${type}/${best.imdbId}" com.stremio.one`;
+    }
+
     for (const platKey of priority) {
       const def = PLATFORM_DEFS[platKey];
       if (!def) continue;
 
-      // Stremio — not on JustWatch, resolve via Cinemeta
+      // Stremio — resolve IMDb ID from JustWatch
       if (platKey === "stremio") {
-        const stremioUrl = await resolveStremio(input);
-        if (stremioUrl) {
+        const intent = await getStremioIntent();
+        if (intent) {
           toast.title = `Casting via Stremio…`;
           toast.message = input;
-          await wakeAndCast(toast, def.intent(stremioUrl));
+          await wakeAndCast(toast, intent);
           await setLastQuery(STORAGE_KEY, input);
           toast.style = Toast.Style.Success;
           toast.title = `🎬 ${input}`;

@@ -8,7 +8,7 @@ Cast YouTube and Stremio content to your Fire TV from Raycast, via Home Assistan
 Copy a YouTube link → Raycast → "Cast YouTube". Opens in SmartTube.
 
 ### Cast Stremio
-Copy an IMDb ID (`tt1375666`) or type a movie/series name → Raycast → "Cast Stremio". Searches Stremio's Cinemeta API and opens the result.
+Copy a JustWatch ID (`ts20995`) or type a movie/series name → Raycast → "Cast Stremio". Searches JustWatch for IMDb ID and opens the result in Stremio.
 
 ## Setup
 
