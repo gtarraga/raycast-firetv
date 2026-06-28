@@ -111,13 +111,8 @@ export async function runCommand(
     });
     await setLastQuery(storageKey, input);
     toast.style = Toast.Style.Success;
-    if (match.fallback) {
-      toast.title = displayName;
-      toast.message = `Couldn't find show page, opened ${displayName} app`;
-    } else {
-      toast.title = displayName;
-      toast.message = footer;
-    }
+    toast.title = displayName;
+    toast.message = footer;
   } catch (err) {
     toast.style = Toast.Style.Failure;
     toast.title = "Failed";
