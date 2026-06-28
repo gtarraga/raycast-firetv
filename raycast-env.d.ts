@@ -30,6 +30,14 @@ declare namespace Preferences {
   export type CastYoutube = ExtensionPreferences & {}
   /** Preferences accessible in the `cast-stremio` command */
   export type CastStremio = ExtensionPreferences & {}
+  /** Preferences accessible in the `cast-disney` command */
+  export type CastDisney = ExtensionPreferences & {}
+  /** Preferences accessible in the `cast-netflix` command */
+  export type CastNetflix = ExtensionPreferences & {}
+  /** Preferences accessible in the `cast-prime` command */
+  export type CastPrime = ExtensionPreferences & {}
+  /** Preferences accessible in the `cast-hbo` command */
+  export type CastHbo = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
@@ -41,6 +49,26 @@ declare namespace Arguments {
   /** Arguments passed to the `cast-stremio` command */
   export type CastStremio = {
   /** Movie/Series Name */
+  "query": string
+}
+  /** Arguments passed to the `cast-disney` command */
+  export type CastDisney = {
+  /** Show/Movie Name */
+  "query": string
+}
+  /** Arguments passed to the `cast-netflix` command */
+  export type CastNetflix = {
+  /** Show/Movie Name */
+  "query": string
+}
+  /** Arguments passed to the `cast-prime` command */
+  export type CastPrime = {
+  /** Show/Movie Name */
+  "query": string
+}
+  /** Arguments passed to the `cast-hbo` command */
+  export type CastHbo = {
+  /** Show/Movie Name */
   "query": string
 }
 }

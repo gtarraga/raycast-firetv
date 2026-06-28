@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "firetv",
   "title": "Fire TV Cast",
-  "description": "Cast YouTube and Stremio to Fire TV via Home Assistant",
+  "description": "Cast YouTube, Stremio, Disney+, Netflix, Prime Video, and HBO to Fire TV via Home Assistant",
   "icon": "icon.png",
   "author": "gtarraga",
   "platforms": [
@@ -38,6 +38,66 @@
         {
           "name": "query",
           "placeholder": "Movie/Series Name",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "cast-disney",
+      "title": "Cast Disney+",
+      "subtitle": "Fire TV Cast",
+      "description": "Turn on Fire TV and projector, open show or movie in Disney+",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "query",
+          "placeholder": "Show/Movie Name",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "cast-netflix",
+      "title": "Cast Netflix",
+      "subtitle": "Fire TV Cast",
+      "description": "Turn on Fire TV and projector, open show or movie in Netflix",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "query",
+          "placeholder": "Show/Movie Name",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "cast-prime",
+      "title": "Cast Prime Video",
+      "subtitle": "Fire TV Cast",
+      "description": "Turn on Fire TV and projector, open show or movie in Prime Video",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "query",
+          "placeholder": "Show/Movie Name",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "cast-hbo",
+      "title": "Cast HBO",
+      "subtitle": "Fire TV Cast",
+      "description": "Turn on Fire TV and projector, open show or movie in HBO / Max",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "query",
+          "placeholder": "Show/Movie Name",
           "type": "text",
           "required": false
         }
