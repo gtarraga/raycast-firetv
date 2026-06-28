@@ -1,6 +1,6 @@
 /**
  * JustWatch GraphQL API helper — free, no auth, region-aware.
- * Resolves show/movie names to streaming deep-link URLs for any platform.
+ * Pure data fetching.  Platform matching and intent building live in lib/resolve.ts.
  */
 
 const JW_API = "https://apis.justwatch.com/graphql";
@@ -22,25 +22,6 @@ export interface JWTitleResult {
     platform: string;
     monetizationType: string;
   }>;
-}
-
-/**
- * Map internal platform keys to JustWatch package `clearName` strings.
- *
- * HBO Max: JustWatch has used both "HBO Max" and "Max" depending on
- * region/rebrand timing.  We match either so we catch titles that were
- * indexed before the rebrand as well as current "Max" listings.
- */
-const PLATFORM_MAP: Record<string, string[]> = {
-  disney: ["Disney Plus"],
-  hbo: ["Max", "HBO Max"],
-  max: ["Max", "HBO Max"],
-  prime: ["Amazon Prime Video", "Amazon Video"],
-};
-
-/** Map our internal platform keys to JustWatch package names */
-export function getJWPlatforms(key: string): string[] {
-  return PLATFORM_MAP[key] || [key];
 }
 
 const JW_ID_RE = /^ts\d+$/i;
@@ -175,53 +156,5 @@ export async function getTitleById(nodeId: string, country: string, lang: string
     runtime: c.runtime as number | undefined,
     genres: genres?.map((g) => g.shortName),
     posterUrl: c.posterUrl as string | undefined,
-  };
-}
-/** Resolve a show to a streaming URL on a specific platform. */
-export async function resolveShow(
-  query: string,
-  platform: string,
-  country: string,
-  lang: string,
-): Promise<{ url: string; title: string; originalTitle?: string; year?: number; platformName: string } | null> {
-  const targetPackages = getJWPlatforms(platform);
-
-  const results = await searchJustWatchFull(query, country, lang);
-  const best = results[0];
-  if (!best) return null;
-
-  const match = (best.offers || []).find((o) => targetPackages.includes(o.platform));
-  if (!match) return null;
-
-  return {
-    url: match.url,
-    title: best.title,
-    originalTitle: best.originalTitle,
-    year: best.year,
-    platformName: match.platform,
-  };
-}
-
-/** Get ALL available platforms for a show, plus search metadata for Stremio. */
-export async function getAllPlatforms(
-  query: string,
-  country: string,
-  lang: string,
-): Promise<{
-  meta: JWTitleResult | null;
-  offers: Array<{ url: string; platform: string; title: string; year?: number }>;
-}> {
-  const results = await searchJustWatchFull(query, country, lang);
-  const best = results[0];
-  if (!best) return { meta: null, offers: [] };
-
-  return {
-    meta: best,
-    offers: (best.offers || []).map((o) => ({
-      url: o.url,
-      platform: o.platform,
-      title: best.title,
-      year: best.year,
-    })),
   };
 }
