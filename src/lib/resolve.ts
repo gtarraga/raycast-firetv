@@ -33,19 +33,64 @@ function platformMatches(plat: string, jwPackage: string): boolean {
 
 /** Scrape hbo.com for a show-page UUID. Returns null if not found. */
 async function resolveHboUrl(titles: string[]): Promise<string | null> {
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml",
+    "Accept-Language": "en-US,en;q=0.9",
+  };
+
   for (const title of titles) {
     const slug = title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/-+$/g, "");
     if (!slug) continue;
-    const res = await fetch(`https://www.hbo.com/content/${slug}`, {
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-    });
-    if (!res.ok) continue;
+    const url = `https://www.hbo.com/content/${slug}`;
+    console.log("[resolve] hbo.com scrape:", url, `(from title "${title}")`);
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      console.log("[resolve] hbo.com HTTP", res.status, `for ${slug}`);
+      continue;
+    }
     const html = await res.text();
-    const m = html.match(/play\.hbomax\.com\/show\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
-    if (m) return `https://play.hbomax.com/show/${m[1]}`;
+
+    // Find seriesId that appears near seasonNumber — this is the page's own show.
+    // HTML has escaped JSON: `\"seriesId\"` etc.
+    // Strategy: find UUIDs near seriesId, check if seasonNumber nearby.
+    const sidGlobal = /seriesId[^a-f0-9]*([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/g;
+    let sidExec: RegExpExecArray | null;
+    while ((sidExec = sidGlobal.exec(html)) !== null) {
+      const sid = sidExec[1];
+      const after = html.slice(sidExec.index, sidExec.index + 2000);
+      if (/seasonNumber\D*\d+/.test(after)) {
+        const hboUrl = `https://play.hbomax.com/show/${sid}`;
+        console.log("[resolve] hbo.com found UUID (seriesId+episode):", hboUrl);
+        return hboUrl;
+      }
+    }
+
+    // New format: max.com/shows/<slug>/<uuid> or max.com/movies/<slug>/<uuid>
+    const newMatch = html.match(
+      /max\.com\/(?:shows|movies)\/[a-z0-9-]+\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
+    );
+    if (newMatch) {
+      const hboUrl = `https://play.hbomax.com/show/${newMatch[1]}`;
+      console.log("[resolve] hbo.com found UUID (max.com):", hboUrl);
+      return hboUrl;
+    }
+
+    // Old format: play.hbomax.com/show/<uuid> or play.hbomax.com/shows/<uuid>
+    const oldMatch = html.match(
+      /play\.hbomax\.com\/shows?\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
+    );
+    if (oldMatch) {
+      const hboUrl = `https://play.hbomax.com/show/${oldMatch[1]}`;
+      console.log("[resolve] hbo.com found UUID (play.hbomax):", hboUrl);
+      return hboUrl;
+    }
+
+    console.log("[resolve] hbo.com no UUID in HTML for", slug);
   }
   return null;
 }
@@ -128,12 +173,28 @@ export async function resolveMedia(
 ): Promise<MediaMatch | null> {
   const results = await searchJustWatchFull(query, country, lang);
   const best = results[0];
+
+  console.log("[resolve] query:", query);
+  console.log("[resolve] country/lang:", country, lang);
+  console.log(
+    "[resolve] JustWatch #1:",
+    best
+      ? JSON.stringify({
+          title: best.title,
+          originalTitle: best.originalTitle,
+          year: best.year,
+          offers: (best.offers || []).map((o) => o.platform),
+        })
+      : "no results",
+  );
+
   if (!best) return null;
 
   for (const plat of platforms) {
     // Stremio — resolved via IMDb ID, not JustWatch offer
     if (plat === "stremio") {
       if (best.imdbId) {
+        console.log("[resolve] platform Stremio — IMDb:", best.imdbId);
         return makeMatch("stremio", "", buildStremioIntent(best.imdbId, best.objectType), best);
       }
       continue;
@@ -144,24 +205,31 @@ export async function resolveMedia(
     // HBO Max: scrape hbo.com for show-page URL (JustWatch gives video/watch links)
     if (plat === "hbo") {
       if (!match?.url) continue; // not on HBO Max, try next platform
-      const hboUrl = await resolveHboUrl([best.title, query]);
-      if (hboUrl) return makeMatch("hbo", hboUrl, buildHboIntent(hboUrl), best);
+      const hboUrl = await resolveHboUrl([best.originalTitle, best.title, query].filter(Boolean) as string[]);
+      if (hboUrl) {
+        console.log("[resolve] platform HBO — scraped URL:", hboUrl);
+        return makeMatch("hbo", hboUrl, buildHboIntent(hboUrl), best);
+      }
       // scraper failed — open app home (don't fall back to video URL)
+      console.log("[resolve] platform HBO — scraper failed, fallback to app home");
       return makeMatch("hbo", "", "am start -n com.hbo.hbonow/com.wbd.beam.BeamActivity -f 0x10000020", best, true);
     }
 
     // Prime Video: open app home (detail URLs may autoplay)
     if (plat === "prime") {
       if (!match?.url) continue;
+      console.log("[resolve] platform Prime — app home");
       return makeMatch("prime", "", buildPrimeIntent(), best);
     }
 
     // Disney+ / Netflix: deep-link from JustWatch offer URL
     if (match?.url) {
+      console.log("[resolve] platform", plat, "— deep link:", match.url);
       return makeMatch(plat, match.url, buildIntent(plat, match.url), best);
     }
   }
 
+  console.log("[resolve] no platform matched");
   return null;
 }
 
