@@ -215,21 +215,28 @@ export async function resolveShow(
   return { url, title: result.title, year: result.year, platformName: match.package?.clearName || "" };
 }
 
-/** Get ALL available platforms for a show. */
+/** Get ALL available platforms for a show, plus search metadata for Stremio. */
 export async function getAllPlatforms(
   query: string,
   country: string,
   lang: string,
-): Promise<Array<{ url: string; platform: string; title: string; year?: number }>> {
-  const result = await searchJustWatch(query, country, lang);
-  if (!result) return [];
+): Promise<{
+  meta: JWTitleResult | null;
+  offers: Array<{ url: string; platform: string; title: string; year?: number }>;
+}> {
+  const results = await searchJustWatchFull(query, country, lang);
+  const result = results[0];
+  if (!result) return { meta: null, offers: [] };
 
   const offers = await getOffers(result.fullPath, country);
 
-  return offers.map((o) => ({
-    url: o.standardWebURL?.replace(/[?&]utm_source=.*$/, "") || "",
-    platform: o.package?.clearName || "",
-    title: result.title,
-    year: result.year,
-  }));
+  return {
+    meta: result,
+    offers: offers.map((o) => ({
+      url: o.standardWebURL?.replace(/[?&]utm_source=.*$/, "") || "",
+      platform: o.package?.clearName || "",
+      title: result.title,
+      year: result.year,
+    })),
+  };
 }

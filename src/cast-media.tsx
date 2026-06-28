@@ -1,6 +1,6 @@
 import { showToast, Toast, Clipboard, LaunchProps } from "@raycast/api";
 import { wakeAndCast, prefs } from "./hass";
-import { getAllPlatforms, searchJustWatchFull } from "./justwatch";
+import { getAllPlatforms } from "./justwatch";
 import { getLastQuery, setLastQuery } from "./storage";
 
 interface Arguments {
@@ -113,25 +113,17 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     const priorityStr = p.platformPriority || "hbo,disney,netflix,stremio,prime";
     const priority = priorityStr.split(",").map((s) => s.trim().toLowerCase());
 
-    const allPlatforms = await getAllPlatforms(input, country, lang);
-
-    // Stremio helper — uses JustWatch for IMDb ID + type
-    async function getStremioIntent(): Promise<string | null> {
-      const results = await searchJustWatchFull(input, country, lang);
-      const best = results[0];
-      if (!best?.imdbId) return null;
-      const type = best.objectType === "SHOW" ? "series" : "movie";
-      return `am start -a android.intent.action.VIEW -d "stremio:///detail/${type}/${best.imdbId}" com.stremio.one`;
-    }
+    const { offers: allPlatforms, meta } = await getAllPlatforms(input, country, lang);
 
     for (const platKey of priority) {
       const def = PLATFORM_DEFS[platKey];
       if (!def) continue;
 
-      // Stremio — resolve IMDb ID from JustWatch
+      // Stremio — resolve IMDb ID from already-fetched JustWatch meta
       if (platKey === "stremio") {
-        const intent = await getStremioIntent();
-        if (intent) {
+        if (meta?.imdbId) {
+          const type = meta.objectType === "SHOW" ? "series" : "movie";
+          const intent = `am start -a android.intent.action.VIEW -d "stremio:///detail/${type}/${meta.imdbId}" com.stremio.one`;
           toast.title = `Casting via Stremio…`;
           toast.message = input;
           await wakeAndCast(toast, intent);
