@@ -104,7 +104,7 @@ export async function runCommand(
     const footer = formatFooter(match.title, match.originalTitle, match.year);
     const displayName = platformDisplayName(match.platform);
 
-    toast.title = `Casting ${match.title}…`;
+    toast.title = `Opening ${displayName}…`;
     toast.message = footer;
     await wakeAndLaunch(config, match.intent, (msg) => {
       toast.message = msg;

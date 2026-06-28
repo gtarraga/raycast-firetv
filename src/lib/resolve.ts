@@ -130,9 +130,8 @@ export async function resolveMedia(
       if (!match?.url) continue; // not on HBO Max, try next platform
       const hboUrl = await resolveHboUrl([best.title, query]);
       if (hboUrl) return makeMatch("hbo", hboUrl, buildHboIntent(hboUrl), best);
-      // scraper failed — fall back to JustWatch URL (domain-rewrite to play.max.com)
-      const jwUrl = match.url.replace("play.hbomax.com", "play.max.com");
-      return makeMatch("hbo", jwUrl, buildHboIntent(jwUrl), best);
+      // scraper failed — open app home (don't fall back to video URL)
+      return makeMatch("hbo", "", "am start -n com.hbo.hbonow/com.wbd.beam.BeamActivity -f 0x10000020", best);
     }
 
     // Prime Video: open app home (detail URLs may autoplay)
