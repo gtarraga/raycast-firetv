@@ -1,3 +1,20 @@
+/**
+ * Cast HBO / Max — standalone command (single platform).
+ *
+ * HBO URL resolution chain:
+ *   1. resolveShow("hbo", ...) searches JustWatch for the title and filters
+ *      offers to packages matching "Max" / "HBO Max".
+ *   2. If found, `result.url` is JustWatch's `standardWebURL` — this is a
+ *      video/watch page that may autoplay.  We rewrite the domain from
+ *      play.hbomax.com → play.max.com because the Max Android app handles
+ *      play.max.com intents more reliably.
+ *   3. If not found on Max, fallback intent opens the Max app home.
+ *
+ * Note: cast-media.tsx uses a different HBO path — it scrapes hbo.com for
+ * the show landing page (avoids autoplay).  This standalone command uses
+ * JustWatch URLs directly for simplicity/speed.
+ */
+
 import { showToast, Toast, LaunchProps } from "@raycast/api";
 import { wakeAndCast, prefs } from "./hass";
 import { resolveShow } from "./justwatch";
@@ -44,7 +61,9 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     toast.title = `Casting ${result.title}…`;
     toast.message = result.platformName;
 
-    // Use play.max.com URL — Max app handles these
+    // JustWatch returns play.hbomax.com/video/watch/<id> — rewrite to
+    // play.max.com because the Max Android app (com.hbo.hbonow) handles
+    // play.max.com intents natively on Fire TV.
     const url = result.url.replace("play.hbomax.com", "play.max.com");
     await wakeAndCast(
       toast,

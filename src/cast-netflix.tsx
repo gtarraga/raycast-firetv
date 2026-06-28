@@ -9,7 +9,8 @@ interface Arguments {
 
 const NETFLIX_PROPERTIES = ["P1874"];
 const STORAGE_KEY = "netflix";
-const APP_INTENT = 'am start -a android.intent.action.VIEW -d "https://www.netflix.com" -f 0x10000020 -e source 30 com.netflix.ninja';
+const APP_INTENT =
+  'am start -a android.intent.action.VIEW -d "https://www.netflix.com" -f 0x10000020 -e source 30 com.netflix.ninja';
 
 function buildUrl(id: string): string {
   return `https://www.netflix.com/title/${id}`;
@@ -78,7 +79,10 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     toast.title = `Casting ${best.label}…`;
     toast.message = subtitle;
 
-    await wakeAndCast(toast, `am start -a android.intent.action.VIEW -d "${deepLink}" -f 0x10000020 -e source 30 com.netflix.ninja`);
+    await wakeAndCast(
+      toast,
+      `am start -a android.intent.action.VIEW -d "${deepLink}" -f 0x10000020 -e source 30 com.netflix.ninja`,
+    );
 
     await setLastQuery(STORAGE_KEY, input);
 

@@ -23,7 +23,13 @@ export interface JWTitleResult {
   }>;
 }
 
-/** Map our internal platform keys to JustWatch package names */
+/**
+ * Map internal platform keys to JustWatch package `clearName` strings.
+ *
+ * HBO/Max: JustWatch has used both "HBO Max" and "Max" depending on
+ * region/rebrand timing.  We match either so we catch titles that were
+ * indexed before the rebrand as well as current "Max" listings.
+ */
 const PLATFORM_MAP: Record<string, string[]> = {
   disney: ["Disney Plus"],
   hbo: ["Max", "HBO Max"],
@@ -53,11 +59,7 @@ async function jwQuery(query: string, variables: Record<string, unknown>) {
 }
 
 /** Search JustWatch — returns ranked results with IMDb IDs, offers, posters, etc. */
-export async function searchJustWatchFull(
-  query: string,
-  country: string,
-  lang: string,
-): Promise<JWTitleResult[]> {
+export async function searchJustWatchFull(query: string, country: string, lang: string): Promise<JWTitleResult[]> {
   const data = await jwQuery(
     `query Search($q: String!, $country: Country!, $lang: Language!) {
       popularTitles(country: $country, first: 10, filter: { searchQuery: $q }) {
@@ -109,7 +111,7 @@ export async function searchJustWatchFull(
 
   // Score and rank
   const q = query.toLowerCase();
-  const scored = edges.map((e, i) => {
+  const scored = edges.map((e) => {
     const t = e.node.content.title?.toLowerCase() || "";
     let score = 0;
     if (t === q) score = 100;
@@ -142,11 +144,7 @@ export async function searchJustWatchFull(
 }
 
 /** Get a single title by JustWatch node ID (e.g. ts20995). */
-export async function getTitleById(
-  nodeId: string,
-  country: string,
-  lang: string,
-): Promise<JWTitleResult | null> {
+export async function getTitleById(nodeId: string, country: string, lang: string): Promise<JWTitleResult | null> {
   const data = await jwQuery(
     `query GetTitle($nodeId: ID!, $country: Country!, $lang: Language!) {
       node(id: $nodeId) {

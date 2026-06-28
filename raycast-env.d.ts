@@ -49,7 +49,7 @@ declare namespace Preferences {
 declare namespace Arguments {
   /** Arguments passed to the `cast-media` command */
   export type CastMedia = {
-  /** Media Name or YouTube URL */
+  /** Title or YT URL */
   "query": string
 }
   /** Arguments passed to the `cast-youtube` command */

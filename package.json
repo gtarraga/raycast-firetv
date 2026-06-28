@@ -22,7 +22,7 @@
       "arguments": [
         {
           "name": "query",
-          "placeholder": "Media Name or YouTube URL",
+          "placeholder": "Title or YT URL",
           "type": "text",
           "required": false
         }

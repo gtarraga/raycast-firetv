@@ -9,10 +9,29 @@ interface Arguments {
 
 const STORAGE_KEY = "show";
 
+/**
+ * Resolve an HBO/Max show-page URL by scraping hbo.com.
+ *
+ * Why not use JustWatch URLs directly?
+ *   JustWatch `standardWebURL` for Max gives video/watch pages that autoplay
+ *   (e.g. S1E1) — user can't pick episode.  We want the show's landing page.
+ *
+ * Flow:
+ *   1. Convert title to slug: lowercase, replace non-alphanumeric with dashes
+ *   2. Fetch https://www.hbo.com/content/<slug>  (needs real User-Agent)
+ *   3. Parse HTML for play.hbomax.com/show/<UUID> and extract the UUID
+ *   4. Reconstruct clean show-page URL from UUID
+ *
+ * Falls back to null if hbo.com doesn't know the title (scraper returns 404
+ * or the page doesn't embed a play.hbomax.com link).  Caller then opens the
+ * Max app home instead of deep-linking.
+ */
 async function resolveHboUrl(titles: string[]): Promise<string | null> {
-  // Try each title variant as hbo.com/content/<slug>
   for (const title of titles) {
-    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/g, "");
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/-+$/g, "");
     if (!slug) continue;
     const res = await fetch(`https://www.hbo.com/content/${slug}`, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
@@ -34,32 +53,30 @@ interface PlatformDef {
 const PLATFORM_DEFS: Record<string, PlatformDef> = {
   hbo: {
     jwNames: ["Max", "HBO Max"],
-    // Use Wikidata P8298 for show page URL (avoids autoplay).
-    // JustWatch video/watch URLs autoplay S1E1.
-    intent: (url) =>
-      `am start -a android.intent.action.VIEW -d "${url}" -f 0x10000020 -e source 30 com.hbo.hbonow`,
+    // HBO URLs come from resolveHboUrl() (hbo.com scraper → show page),
+    // NOT from JustWatch `standardWebURL` directly.  JustWatch gives
+    // video/watch links that autoplay S1E1; we want the show landing page
+    // so user can choose what to watch.
+    intent: (url) => `am start -a android.intent.action.VIEW -d "${url}" -f 0x10000020 -e source 30 com.hbo.hbonow`,
     fallbackIntent: "am start -n com.hbo.hbonow/com.wbd.beam.BeamActivity -f 0x10000020",
   },
   disney: {
     jwNames: ["Disney Plus"],
     intent: (url) =>
       `am start -a android.intent.action.VIEW -d "${url}" -f 0x10000020 -e source 30 com.disney.disneyplus`,
-    fallbackIntent:
-      "am start -n com.disney.disneyplus/com.bamtechmedia.dominguez.main.MainActivity -f 0x10000020",
+    fallbackIntent: "am start -n com.disney.disneyplus/com.bamtechmedia.dominguez.main.MainActivity -f 0x10000020",
   },
   netflix: {
     jwNames: ["Netflix"],
-    intent: (url) =>
-      `am start -a android.intent.action.VIEW -d "${url}" -f 0x10000020 -e source 30 com.netflix.ninja`,
-    fallbackIntent: 'am start -a android.intent.action.VIEW -d "https://www.netflix.com" -f 0x10000020 -e source 30 com.netflix.ninja',
+    intent: (url) => `am start -a android.intent.action.VIEW -d "${url}" -f 0x10000020 -e source 30 com.netflix.ninja`,
+    fallbackIntent:
+      'am start -a android.intent.action.VIEW -d "https://www.netflix.com" -f 0x10000020 -e source 30 com.netflix.ninja',
   },
   prime: {
     jwNames: ["Amazon Prime Video", "Amazon Video"],
     // JustWatch Prime URLs are /detail?gti=... — may autoplay. Open app home.
-    intent: () =>
-      "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
-    fallbackIntent:
-      "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
+    intent: () => "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
+    fallbackIntent: "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
   },
   stremio: {
     jwNames: [], // Stremio resolved via JustWatch IMDb ID
@@ -142,7 +159,8 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
       const showName = match.title || input;
       const titleYear = match.year ? `${showName} · ${match.year}` : showName;
 
-      // HBO — use Wikidata P8298 for show page URL (JustWatch gives video URLs)
+      // HBO/Max: scrape hbo.com for show-page URL (JustWatch gives
+      // video/watch links that autoplay — we want the landing page).
       if (platKey === "hbo") {
         const hboUrl = await resolveHboUrl([showName, input]);
         if (hboUrl) {
@@ -155,8 +173,9 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
           toast.message = titleYear;
           return;
         }
-        // Scraper failed — open app home, don't fall back to video URL
-        toast.title = `Opening Max…`;
+        // hbo.com scraper didn't find the title — open Max app home
+        // (don't fall back to JustWatch video URL; it would autoplay)
+        toast.title = `Opening HBO Max…`;
         toast.message = titleYear;
         await wakeAndCast(toast, def.fallbackIntent);
         await setLastQuery(STORAGE_KEY, input);

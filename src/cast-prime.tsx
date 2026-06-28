@@ -34,10 +34,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     if (!result?.url) {
       toast.title = "Opening Prime Video…";
       toast.message = "Not found on Prime, launching app";
-      await wakeAndCast(
-        toast,
-        "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
-      );
+      await wakeAndCast(toast, "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020");
       toast.style = Toast.Style.Success;
       toast.title = "🎬 Prime Video";
       toast.message = input;
@@ -47,10 +44,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     toast.title = `Casting ${result.title}…`;
     toast.message = result.platformName;
 
-    await wakeAndCast(
-      toast,
-      `am start -a android.intent.action.VIEW -d "${result.url}" -f 0x10000020 com.amazon.avod`,
-    );
+    await wakeAndCast(toast, `am start -a android.intent.action.VIEW -d "${result.url}" -f 0x10000020 com.amazon.avod`);
 
     await setLastQuery(STORAGE_KEY, input);
 
@@ -60,10 +54,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
   } catch (err) {
     toast.title = "Opening Prime Video…";
     toast.message = err instanceof Error ? err.message : "Search failed, launching app";
-    await wakeAndCast(
-      toast,
-      "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
-    );
+    await wakeAndCast(toast, "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020");
     toast.style = Toast.Style.Success;
     toast.title = "🎬 Prime Video";
     toast.message = "App opened";
