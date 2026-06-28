@@ -30,8 +30,8 @@ type ExtensionPreferences = {
 declare type Preferences = ExtensionPreferences
 
 declare namespace Preferences {
-  /** Preferences accessible in the `cast-show` command */
-  export type CastShow = ExtensionPreferences & {}
+  /** Preferences accessible in the `cast-media` command */
+  export type CastMedia = ExtensionPreferences & {}
   /** Preferences accessible in the `cast-youtube` command */
   export type CastYoutube = ExtensionPreferences & {}
   /** Preferences accessible in the `cast-stremio` command */
@@ -47,9 +47,9 @@ declare namespace Preferences {
 }
 
 declare namespace Arguments {
-  /** Arguments passed to the `cast-show` command */
-  export type CastShow = {
-  /** Show/Movie Name or YouTube URL */
+  /** Arguments passed to the `cast-media` command */
+  export type CastMedia = {
+  /** Media Name or YouTube URL */
   "query": string
 }
   /** Arguments passed to the `cast-youtube` command */

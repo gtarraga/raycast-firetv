@@ -61,7 +61,36 @@ const PLATFORM_DEFS: Record<string, PlatformDef> = {
     fallbackIntent:
       "am start -n com.amazon.avod/.client.activity.FireTvHomeScreenActivity -f 0x10000020",
   },
+  stremio: {
+    jwNames: [], // Not on JustWatch — uses Cinemeta
+    intent: (url) => `am start -a android.intent.action.VIEW -d "${url}" com.stremio.one`,
+    fallbackIntent: "",
+  },
 };
+
+async function resolveStremio(query: string): Promise<string | null> {
+  const IMDB_ID_RE = /^(tt\d{7,8})$/i;
+  const directMatch = query.match(IMDB_ID_RE);
+  if (directMatch) return `stremio:///detail/movie/${directMatch[1]}`;
+
+  async function searchCinemeta(q: string, type: string) {
+    const url = `https://v3-cinemeta.strem.io/catalog/${type}/top/search=${encodeURIComponent(q)}.json`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = (await res.json()) as { metas?: Array<{ imdb_id: string; type: string; name: string }> };
+    return (data.metas || []).filter((m) => m.imdb_id);
+  }
+
+  const [movies, series] = await Promise.all([
+    searchCinemeta(query, "movie"),
+    searchCinemeta(query, "series"),
+  ]);
+  const best = movies[0] || series[0] || null;
+  if (!best) return null;
+
+  const mediaType = best.type === "series" ? "series" : "movie";
+  return `stremio:///detail/${mediaType}/${best.imdb_id}`;
+}
 
 export default async function Command(props: LaunchProps<{ arguments: Arguments }>) {
   let input = props.arguments?.query?.trim();
@@ -105,7 +134,7 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     const country = p.countryCode || "ES";
     const lang = country.toLowerCase();
 
-    const priorityStr = p.platformPriority || "hbo,disney,netflix,prime";
+    const priorityStr = p.platformPriority || "hbo,disney,netflix,stremio,prime";
     const priority = priorityStr.split(",").map((s) => s.trim().toLowerCase());
 
     const allPlatforms = await getAllPlatforms(input, country, lang);
@@ -113,6 +142,22 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
     for (const platKey of priority) {
       const def = PLATFORM_DEFS[platKey];
       if (!def) continue;
+
+      // Stremio — not on JustWatch, resolve via Cinemeta
+      if (platKey === "stremio") {
+        const stremioUrl = await resolveStremio(input);
+        if (stremioUrl) {
+          toast.title = `Casting via Stremio…`;
+          toast.message = input;
+          await wakeAndCast(toast, def.intent(stremioUrl));
+          await setLastQuery(STORAGE_KEY, input);
+          toast.style = Toast.Style.Success;
+          toast.title = `🎬 ${input}`;
+          toast.message = "Stremio";
+          return;
+        }
+        continue;
+      }
 
       const match = allPlatforms.find((o) => def.jwNames.includes(o.platform));
       if (!match?.url) continue;

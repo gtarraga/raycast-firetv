@@ -14,15 +14,15 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "cast-show",
-      "title": "Cast Show",
+      "name": "cast-media",
+      "title": "Cast Media",
       "subtitle": "Fire TV Cast",
       "description": "Auto-detect platform and cast any show or movie by name. YouTube URLs open SmartTube.",
       "mode": "no-view",
       "arguments": [
         {
           "name": "query",
-          "placeholder": "Show/Movie Name or YouTube URL",
+          "placeholder": "Media Name or YouTube URL",
           "type": "text",
           "required": false
         }
