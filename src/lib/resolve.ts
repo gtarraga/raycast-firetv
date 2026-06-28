@@ -94,8 +94,46 @@ async function resolveHboUrl(titles: string[]): Promise<string | null> {
       }
     } // end content path loop
 
+    // Fallback: use Startpage to search for the show on hbomax.com.
+    // Startpage returns Google-quality results with no API key.
+    // We considered other search options:
+    //   Exa (exa.ai)        — great results, free tier 20K/mo, but needs API key
+    //   DuckDuckGo Lite     — blocked, returns empty pages
+    //   Mojeek              — unreliable, spotty coverage for show titles
+    //   Bing                — API shutting down (announced May 2025)
+    //   Google CSE          — 100 queries/day free, needs key + setup
+    const spUrl = await searchStartpage(title);
+    if (spUrl) {
+      console.log("[resolve] hbo.com found URL (Startpage):", spUrl);
+      return spUrl;
+    }
+
     console.log("[resolve] hbo.com no UUID in HTML for", slug);
   }
+  return null;
+}
+
+// ── Search fallback ───────────────────────────────────────────
+
+/**
+ * Search Startpage for the show's hbomax.com URL.
+ * Zero API key, Google-quality results via Startpage's privacy proxy.
+ */
+async function searchStartpage(title: string): Promise<string | null> {
+  const q = encodeURIComponent(`${title} HBO Max`);
+  const url = `https://www.startpage.com/sp/search?q=${q}`;
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    },
+  });
+  if (!res.ok) return null;
+  const html = await res.text();
+  const m = html.match(
+    /hbomax\.com\/(?:shows|movies)\/[a-z0-9-]+\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i,
+  );
+  if (m) return `https://play.hbomax.com/show/${m[1]}`;
   return null;
 }
 
