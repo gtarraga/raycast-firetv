@@ -1,5 +1,5 @@
 import { LaunchProps, Clipboard } from "@raycast/api";
-import { runCommand, launchYouTube } from "./lib/command";
+import { runCommand, launchYouTube, launchDazn } from "./lib/command";
 import { isYouTubeUrl } from "./lib/youtube";
 
 interface Arguments {
@@ -17,6 +17,11 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments 
 
   if (query && isYouTubeUrl(query)) {
     await launchYouTube(query);
+    return;
+  }
+
+  if (query?.toLowerCase() === "dazn") {
+    await launchDazn();
     return;
   }
 

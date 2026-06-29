@@ -147,3 +147,22 @@ export async function launchYouTube(url: string): Promise<void> {
     toast.message = err instanceof Error ? err.message : String(err);
   }
 }
+
+/** Launch DAZN app home on Fire TV. */
+export async function launchDazn(): Promise<void> {
+  const toast = await showToast(Toast.Style.Animated, "Opening DAZN…");
+
+  try {
+    const config = buildRemoteConfig();
+    await wakeAndLaunch(config, "am start -n com.dazn/.MainActivity -f 0x10000020", (msg) => {
+      toast.message = msg;
+    });
+    toast.style = Toast.Style.Success;
+    toast.title = "DAZN";
+    toast.message = "App opened";
+  } catch (err) {
+    toast.style = Toast.Style.Failure;
+    toast.title = "Failed";
+    toast.message = err instanceof Error ? err.message : String(err);
+  }
+}
